@@ -1,0 +1,6 @@
+@U7Quizzes_HostAddress = http://localhost:5027
+
+GET {{U7Quizzes_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
