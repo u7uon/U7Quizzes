@@ -35,11 +35,9 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="Models\" />
     <Folder Include="DTOs\" />
     <Folder Include="IServices\" />
     <Folder Include="IRepository\" />
-    <Folder Include="AppData\" />
     <Folder Include="Repository\" />
     <Folder Include="Services\" />
   </ItemGroup>
