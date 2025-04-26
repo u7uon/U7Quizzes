@@ -7,6 +7,8 @@ namespace U7Quizzes.AppData
     public class ApplicationDBContext : IdentityDbContext<User>
     {
         public DbSet<User> User { get; set; }
+        public DbSet<RefreshToken> RefreshTokens { get; set; }
+        // --------------------------
         public DbSet<Favorite> Favorite { get; set; }
         public DbSet<Quiz> Quiz { get; set; }
         public DbSet<Question> Question { get; set; }
