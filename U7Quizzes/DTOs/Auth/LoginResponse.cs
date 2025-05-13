@@ -2,9 +2,9 @@
 
 namespace U7Quizzes.DTOs.Auth
 {
-    public class LoginResponse : ServiceResponse
+    public class LoginResponse 
     {
-        public TokenDTO Token { get; set; }
+        
 
     }
 }

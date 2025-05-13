@@ -1,17 +1,22 @@
-﻿using Microsoft.AspNetCore.Authentication.JwtBearer;
+﻿using FluentValidation;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.WebSockets;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using U7Quizzes.AppData;
+using U7Quizzes.DTOs.Auth;
+using U7Quizzes.DTOs.Share;
 using U7Quizzes.Extensions;
 using U7Quizzes.IRepository;
+using U7Quizzes.IServices;
 using U7Quizzes.IServices.Auth;
 using U7Quizzes.Models;
 using U7Quizzes.Repository;
 using U7Quizzes.Services;
 using U7Quizzes.SingalIR;
+using U7Quizzes.Validators;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -20,7 +25,8 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllers();
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
-builder.Services.AddLogging(); 
+builder.Services.AddLogging();
+builder.Services.AddAutoMapper(typeof(Program));
 
 builder.Services.AddAuthentication(options =>
 {
@@ -46,7 +52,14 @@ builder.Services.AddAuthentication(options =>
 //--- Cấu hình DI 
 builder.Services.AddScoped<IAuthService, AuthService>(); 
 builder.Services.AddScoped<ITokenService, TokenService>(); 
-builder.Services.AddScoped<ITokenRepository, TokenRepository>(); 
+builder.Services.AddScoped<ITokenRepository, TokenRepository>();
+builder.Services.AddScoped<IQuizService, QuizService>();
+builder.Services.AddScoped<IQuizRepository, QuizRepository>();
+
+//Validation 
+
+builder.Services.AddScoped<IValidator<RegisterDTO>, UserValidator >();
+
 
 
 
@@ -80,6 +93,8 @@ builder.Services.AddStackExchangeRedisCache(options =>
     options.Configuration = builder.Configuration.GetConnectionString("Redis");
     options.InstanceName = "U7Quiz:";
 });
+
+
 
 
 // === SignalR ===
