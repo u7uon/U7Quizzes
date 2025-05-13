@@ -1,4 +1,5 @@
 ﻿using System.ComponentModel.DataAnnotations;
+using System.Text.Json.Serialization;
 
 namespace U7Quizzes.Models
 {
@@ -16,7 +17,7 @@ namespace U7Quizzes.Models
         public string? ImageUrl { get; set; }
 
         [Required]
-        public QuestionType Type { get; set; } = QuestionType.MultipleChoice;
+        public QuestionType Type { get; set; } 
 
         public int Points { get; set; } = 10;
 
@@ -37,10 +38,12 @@ namespace U7Quizzes.Models
         public virtual ICollection<Response> Responses { get; set; }
 
     }
+    [JsonConverter(typeof(JsonStringEnumConverter))]
     public enum QuestionType
     {
-        MultipleChoice,
-        TrueFalse,
-        ShortAnswer
+        TrueFalse = 0,
+        SingleChoice = 1,
+        MultipleChoice = 2,
+        ShortAnswer = 3
     }
 }

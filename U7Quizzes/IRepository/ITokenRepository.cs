@@ -1,4 +1,4 @@
-﻿using Microsoft.Identity.Client;
+﻿    using Microsoft.Identity.Client;
 using U7Quizzes.Models;
 
 namespace U7Quizzes.IRepository

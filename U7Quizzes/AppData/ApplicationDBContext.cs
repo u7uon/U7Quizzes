@@ -36,6 +36,11 @@ namespace U7Quizzes.AppData
         {
             base.OnModelCreating(modelBuilder);
 
+
+          
+
+
+
             // User
             modelBuilder.Entity<User>()
                 .HasIndex(u => u.Id)

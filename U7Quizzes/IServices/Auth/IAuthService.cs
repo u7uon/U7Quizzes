@@ -5,15 +5,15 @@ namespace U7Quizzes.IServices.Auth
 {
     public interface IAuthService
     {
-        public Task<LoginResponse> Login(LoginDTO request);
+        public Task<ServiceResponse<TokenDTO>> Login(LoginDTO request);
 
-        public Task<ServiceResponse> Resgister(RegisterDTO request);
+        public Task<ServiceResponse<TokenDTO>> Resgister(RegisterDTO request);
 
-        public Task<LoginResponse> RefreshToken(string refreshToken);
+        public Task<ServiceResponse<TokenDTO>> RefreshToken(string refreshToken);
 
-        public Task<ServiceResponse> ChangePassword(ResetPassDTO resetPassDTO);
+        public Task<ServiceResponse<LoginResponse>> ChangePassword(ResetPassDTO resetPassDTO);
 
 
-        public Task Logout(string userId);
+        public Task Logout(string refreshToken);
     }
 }

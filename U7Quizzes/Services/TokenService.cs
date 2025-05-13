@@ -8,6 +8,7 @@ using U7Quizzes.IRepository;
 using U7Quizzes.IServices.Auth;
 using U7Quizzes.Models;
 using Microsoft.Extensions.Logging;
+using Microsoft.EntityFrameworkCore.Storage.ValueConversion.Internal;
 
 namespace U7Quizzes.Services
 {
@@ -142,6 +143,19 @@ namespace U7Quizzes.Services
                 var hash = sha256.ComputeHash(bytes);
                 return Convert.ToBase64String(hash);
             }
+        }
+
+        public async Task RevokeToken(string Token)
+        {
+            var hashedToken = HashToken(Token);
+
+            var existingToken = await _tokenRepository.GetRefreshTokenByHash(hashedToken);
+
+            if (existingToken is null || string.IsNullOrEmpty(existingToken.Token))
+                throw new Exception("Token không hợp lệ");
+
+            await _tokenRepository.DeleteAsync(existingToken); 
+
         }
     }
 }

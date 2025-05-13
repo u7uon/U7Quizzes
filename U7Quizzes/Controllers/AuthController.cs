@@ -1,11 +1,15 @@
-﻿using Microsoft.AspNetCore.Http;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
+using System.Net.Security;
 using U7Quizzes.DTOs.Auth;
 using U7Quizzes.IServices.Auth;
 
 namespace U7Quizzes.Controllers
 {
+
+
     [ApiController]
     [Route("api/[controller]")]
     public class AuthController : ControllerBase
@@ -30,10 +34,10 @@ namespace U7Quizzes.Controllers
             var result = await _authService.Login(request);
             if (!result.IsSuccess)
             {
-                return BadRequest(new { Message = result.Message });
+                return BadRequest(new { Message = result.Error });
             }
 
-            var refreshToken = result.Token.RefreshToken;
+            var refreshToken = result.Value.RefreshToken;
             var cookieOptions = new CookieOptions
             {
                 HttpOnly = true,
@@ -45,7 +49,7 @@ namespace U7Quizzes.Controllers
 
             Response.Cookies.Append("refreshToken", refreshToken, cookieOptions);
 
-            return Ok(new { AccessToken = result.Token.Accesstoken });
+            return Ok(new { AccessToken = result.Value.Accesstoken });
         }
 
         [HttpPost("refresh-token")]
@@ -63,10 +67,10 @@ namespace U7Quizzes.Controllers
                 var result = await _authService.RefreshToken(refreshToken);
                 if (!result.IsSuccess)
                 {
-                    return Unauthorized(new { Message = result.Message });
+                    return Unauthorized(new { Message = result.Error });
                 }
 
-                Response.Cookies.Append("refreshToken", result.Token.RefreshToken, new CookieOptions
+                Response.Cookies.Append("refreshToken", result.Value.RefreshToken, new CookieOptions
                 {
                     HttpOnly = true,
                     Secure = true,
@@ -75,7 +79,7 @@ namespace U7Quizzes.Controllers
                     Path = "/api/auth"
                 });
 
-                return Ok(new { AccessToken = result.Token.Accesstoken });
+                return Ok(new { AccessToken = result.Value.Accesstoken });
             }
             catch (Exception ex)
             {
@@ -87,6 +91,8 @@ namespace U7Quizzes.Controllers
         [HttpPost("register")]
         public async Task<IActionResult> Register([FromBody] RegisterDTO request)
         {
+            
+            
             if (request == null)
             {
                 return BadRequest(new { message = "Dữ liệu không hợp lệ" });
@@ -96,10 +102,42 @@ namespace U7Quizzes.Controllers
 
             if (!result.IsSuccess)
             {
-                return BadRequest(new { message = result.Message });
+                return BadRequest(new { message = result.Error });
             }
 
-            return Ok(new { message = result.Message });
+            return Ok(new { message = result.Error });
+        }
+
+
+        [HttpPost("Logout")]
+        public async Task<IActionResult> Logout()
+        {
+            try
+            {
+                var refreshToken = Request.Cookies["refreshtoken"];
+                if (string.IsNullOrEmpty(refreshToken))
+                {
+                    return BadRequest(new { Message = "Yêu câu không hợp lệ" });
+                }
+
+                await _authService.Logout(refreshToken);
+                Response.Cookies.Delete("refreshtoken");
+
+                return Ok();
+            }
+            catch(Exception ex)
+            {
+                return BadRequest(new { Message = "Lỗi khi thực hiện yêu cầu: " + ex.Message });
+            }
+            
+        }
+
+
+        [HttpGet("check")]
+        [Authorize(AuthenticationSchemes = "Bearer")]
+        public async Task<IActionResult> check()
+        {
+            return Ok("alo");
         }
 
     }

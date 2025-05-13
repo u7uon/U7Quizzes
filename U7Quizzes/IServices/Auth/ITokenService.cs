@@ -7,9 +7,10 @@ namespace U7Quizzes.IServices.Auth
     public interface ITokenService
     {
         public Task<TokenDTO> GenerateToken(User user , IList<string> Roles);
-
-      
         public Task<RefreshToken?> CheckFreshToken(string freshToken);
+
+
+        public Task RevokeToken(string Token); 
 
     }
 }

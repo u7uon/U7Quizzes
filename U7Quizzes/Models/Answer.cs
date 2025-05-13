@@ -13,7 +13,7 @@ namespace U7Quizzes.Models
         public string Content { get; set; }
 
         [MaxLength(255)]
-        public string ImageUrl { get; set; }
+        public string? ImageUrl { get; set; }
 
         public bool IsCorrect { get; set; }
 
