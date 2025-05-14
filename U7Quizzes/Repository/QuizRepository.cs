@@ -62,6 +62,7 @@ namespace U7Quizzes.Repository
         public async Task<Quiz> AddAsync(Quiz quiz)
         {
             _context.Quiz.Add(quiz);
+            await _context.SaveChangesAsync(); 
 
             return quiz;
         }

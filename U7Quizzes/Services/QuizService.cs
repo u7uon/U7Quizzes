@@ -16,12 +16,14 @@ namespace U7Quizzes.Services
         private readonly IQuizRepository _repo;
         private readonly IMapper _mapper;
         private readonly ApplicationDBContext _context;
+        private readonly IImageService _imageService;
 
-        public QuizService(IQuizRepository repo, IMapper mapper, ApplicationDBContext context)
+        public QuizService(IQuizRepository repo, IMapper mapper, ApplicationDBContext context, IImageService imageService)
         {
             _repo = repo;
             _mapper = mapper;
             _context = context;
+            _imageService = imageService;
         }
 
         public async Task<List<QuizDTO>> GetAllAsync()
@@ -45,7 +47,6 @@ namespace U7Quizzes.Services
                     // 1. Tạo quiz gốc
                     var quiz = _mapper.Map<Quiz>(dto);
                     quiz.CreatorId = creatorId;
-                    quiz.CoverImage = dto.CoverImage;
 
                     // 2. Gán Categories
                     quiz.QuizCategories = dto.CategoryIds
@@ -54,6 +55,10 @@ namespace U7Quizzes.Services
                     // 3. Gán Tags
                     quiz.QuizTags = dto.TagIds
                         .Select(id => new QuizTag { TagId = id }).ToList();
+
+
+                    //Gán ảnh 
+                    quiz.CoverImage = await _imageService.UploadsAsync(dto.CoverImage);
 
                     // 4. Map & validate Questions
                     quiz.Questions = dto.Questions.Select(q =>
@@ -74,7 +79,7 @@ namespace U7Quizzes.Services
                 {
                     await transaction.RollbackAsync();
 
-                    return ServiceResponse<QuizDTO>.Failure( "Thêm quiz thất bại : " +ex.InnerException?.Message);
+                    return ServiceResponse<QuizDTO>.Failure("Thêm quiz thất bại : " + ex.InnerException?.Message);
 
                 }
             }
@@ -85,7 +90,7 @@ namespace U7Quizzes.Services
         {
             using (var _transaction = await _context.Database.BeginTransactionAsync())
             {
-               //try
+                //try
                 {
                     var quiz = await _repo.GetQuiz(dto.QuizId);
                     if (quiz == null) return false;
@@ -93,7 +98,6 @@ namespace U7Quizzes.Services
 
                     _mapper.Map(dto, quiz);
                     quiz.UpdatedAt = DateTime.UtcNow;
-
 
                     var oldQuestions = _context.Question
                         .Where(q => q.QuizId == quiz.QuizId);
@@ -108,7 +112,11 @@ namespace U7Quizzes.Services
                         return question;
                     }).ToList();
 
-                    // ✅ Gán lại danh mục & tag mới
+                    //gán ảnh mới nếu có
+                    if (dto.CoverImage != null)
+                        quiz.CoverImage = await _imageService.UploadsAsync(dto.CoverImage);
+
+                    // ✅ Gán lại danh mục & tag mới 
                     quiz.QuizCategories = dto.CategoryIds
                         .Select(id => new QuizCategory { QuizId = quiz.QuizId, CategoryId = id }).ToList();
 
@@ -126,7 +134,7 @@ namespace U7Quizzes.Services
                 //    await _transaction.RollbackAsync();
                 //    return false;
                 //}
-                
+
             }
         }
         public async Task<bool> DeleteAsync(int id)
@@ -154,7 +162,7 @@ namespace U7Quizzes.Services
                 throw new Exception("Câu hỏi chọn nhiều phải có ít nhất 1 đáp án đúng");
         }
 
-        public Task<List<QuizDTO>> GetByTagName( string tagName)
+        public Task<List<QuizDTO>> GetByTagName(string tagName)
         {
             return _repo.GetByTagsName(tagName);
         }
