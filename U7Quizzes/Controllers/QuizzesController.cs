@@ -1,8 +1,10 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Newtonsoft.Json;
 using U7Quizzes.DTOs.Quiz;
 using U7Quizzes.Extensions;
 using U7Quizzes.IServices;
+using U7Quizzes.Models;
 
 namespace U7Quizzes.Controllers
 {
@@ -41,9 +43,17 @@ namespace U7Quizzes.Controllers
 
         [HttpPost]
         [Authorize(AuthenticationSchemes = "Bearer")]
-        public async Task<IActionResult> Create([FromBody] QuizCreateDTO dto)
+        public async Task<IActionResult> Create([FromForm] string quiz , IFormFile image)
         {
-            var creatorId = User.GetUserId(); 
+            Console.WriteLine(quiz);
+
+            var creatorId = User.GetUserId();
+
+            var dto = JsonConvert.DeserializeObject<QuizCreateDTO>(quiz);
+            if (dto == null) return BadRequest("Dữ liệu quiz không hợp lệ");
+
+            dto.CoverImage = image; 
+
             var result = await _quizService.CreateAsync(dto, creatorId);
 
             if (result.IsSuccess)

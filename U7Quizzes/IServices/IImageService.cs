@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Http.Metadata;
+using Microsoft.AspNetCore.Mvc;
 
 namespace U7Quizzes.IServices
 {
@@ -8,6 +9,6 @@ namespace U7Quizzes.IServices
 
         Task DeleteAsync(string fileName);
 
-        Task GetAsync(string filename); 
+        Task<FileStreamResult> GetAsync(string filename); 
     }
 }

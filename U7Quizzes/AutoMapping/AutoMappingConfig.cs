@@ -18,6 +18,7 @@ namespace U7Quizzes.AutoMapping
             CreateMap<AnswerCreateDTO, Answer>();
 
             CreateMap<Quiz, QuizDTO>()
+                .ForMember(x => x.CoverImage , o => o.Ignore())
                 .ForMember(dest => dest.Categories, opt => opt.MapFrom(src => src.QuizCategories.Select(qc => qc.Category.Name)))
                 .ForMember(dest => dest.Tags, opt => opt.MapFrom(src => src.QuizTags.Select(qt => qt.Tag.Name)));
 
