@@ -94,8 +94,8 @@ builder.Services.AddResponseCaching();
 builder.Services.AddMemoryCache();
 builder.Services.AddStackExchangeRedisCache(options =>
 {
-    options.Configuration = "alo";
-    options.InstanceName = "U7Quiz:";
+    options.Configuration = builder.Configuration.GetSection("Redis")["ConnectionString"];
+    options.InstanceName = "u7_redis_";
 });
 
 
