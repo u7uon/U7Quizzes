@@ -194,15 +194,16 @@ namespace U7Quizzes.Services
                     MaxPage = (int)Math.Ceiling((double)count / PageSize)
                 };
 
-                await _cache.Set(result, key);
-
+                if (filteredData != null )
+                {
+                    await _cache.Set(result, key);
+                }
                 return result;
                 
             }
             
 
         }
-
         private async Task<List<QuizSearch>> Filter(IQueryable<Quiz> query, QuizFilter filter)
         {
             if (filter.Tags is { Count: > 0 })
