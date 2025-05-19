@@ -2,24 +2,24 @@
 using Microsoft.EntityFrameworkCore;
 using U7Quizzes.AppData;
 using U7Quizzes.DTOs.Quiz;
+using U7Quizzes.Extensions;
 using U7Quizzes.IRepository;
 using U7Quizzes.Models;
 
 namespace U7Quizzes.Repository
 {
-    public class QuizRepository : IQuizRepository
+    public class QuizRepository : GenericRepository<Quiz>, IQuizRepository
     {
-        private readonly ApplicationDBContext _context;
         private readonly IMapper _mapper;
-        public QuizRepository(ApplicationDBContext context, IMapper mapper)
+        public QuizRepository(ApplicationDBContext context, IMapper mapper) : base(context)
         {
-            _context = context;
+
             _mapper = mapper;
         }
 
         public async Task<List<QuizDTO>> GetAllAsync()
         {
-            return await _context.Quiz
+            return await _dbSet
                 .Where(q => !q.IsDeleted)
                 .Select(q => new QuizDTO
                 {
@@ -29,71 +29,51 @@ namespace U7Quizzes.Repository
                     CoverImage = q.CoverImage,
                     IsPublic = q.IsPublic,
                     CreatedAt = q.CreatedAt
-                }).ToListAsync();
+                }).ToListAsync()
+                .ConfigureAwaitFalse();
         }
 
         public async Task<QuizDTO?> GetByIdAsync(int id)
         {
-            var quiz = await _context.Quiz
+            var quiz = await _dbSet
                 .Include(q => q.Questions)
                     .ThenInclude(q => q.Answers)
                 .Include(q => q.QuizCategories)
                     .ThenInclude(qc => qc.Category)
                 .Include(q => q.QuizTags)
                     .ThenInclude(qt => qt.Tag)
-                .FirstOrDefaultAsync(q => q.QuizId == id && !q.IsDeleted);
+                .FirstOrDefaultAsync(q => q.QuizId == id && !q.IsDeleted)
+                .ConfigureAwaitFalse();
 
             return quiz == null ? null : _mapper.Map<QuizDTO>(quiz);
         }
         public async Task<Quiz?> GetQuiz(int id)
         {
-            var quiz = await _context.Quiz
+            var quiz = await _dbSet
                 .Include(q => q.Questions)
                     .ThenInclude(q => q.Answers)
                 .Include(q => q.QuizCategories)
                     .ThenInclude(qc => qc.Category)
                 .Include(q => q.QuizTags)
                     .ThenInclude(qt => qt.Tag)
-                .FirstOrDefaultAsync(q => q.QuizId == id && !q.IsDeleted);
-
-            return quiz ;
-        }
-
-        public async Task<Quiz> AddAsync(Quiz quiz)
-        {
-            _context.Quiz.Add(quiz);
-            await _context.SaveChangesAsync(); 
+                .FirstOrDefaultAsync(q => q.QuizId == id && !q.IsDeleted).ConfigureAwait(false);
 
             return quiz;
         }
 
-        public async Task UpdateAsync(Quiz quiz)
+        public IQueryable<Quiz> Search(string? key)
         {
-            _context.Quiz.Update(quiz);
-           await _context.SaveChangesAsync(); 
-        }
+            var query = _dbSet
+                .Where(q => !q.IsDeleted && q.IsPublic);
 
-        public async Task DeleteAsync(Quiz quiz)
-        {
-            quiz.IsDeleted = true;
-            quiz.DeletedAt = DateTime.UtcNow;
-            await UpdateAsync(quiz);
-        }
-
-        public async Task<List<QuizDTO>> GetByTagsName(string tagName)
-        {
-            return await _context.Quiz
-            .Where(q => !q.IsDeleted && q.IsPublic && q.QuizTags
-                .Any(qt => qt.Tag.Name.ToLower() == tagName.ToLower()))
-            .Include(q => q.QuizTags).ThenInclude(qt => qt.Tag)
-            .Select( x => new QuizDTO
+            if (!string.IsNullOrWhiteSpace(key))
             {
-                QuizId = x.QuizId ,
-                Title  = x.Title , 
-                Description = x.Description , 
-                CoverImage = x.CoverImage , 
-            } )
-            .ToListAsync();
+                var loweredKey = key.Trim().ToLower();
+                query = query.Where(q => q.Title.ToLower().Contains(loweredKey));
+            }
+
+            return query;
         }
+
     }
 }

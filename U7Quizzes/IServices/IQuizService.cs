@@ -12,6 +12,6 @@ namespace U7Quizzes.IServices
         Task<bool> DeleteAsync(int id);
 
 
-        Task<List<QuizDTO>> GetByTagName(string taggname); 
+        Task<QuizFilter> GetByTagName(QuizFilter filter); 
     }
 }

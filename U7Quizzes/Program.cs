@@ -6,6 +6,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using U7Quizzes.AppData;
+using U7Quizzes.Caching;
 using U7Quizzes.DTOs.Auth;
 using U7Quizzes.DTOs.Share;
 using U7Quizzes.Extensions;
@@ -56,6 +57,8 @@ builder.Services.AddScoped<ITokenRepository, TokenRepository>();
 builder.Services.AddScoped<IQuizService, QuizService>();
 builder.Services.AddScoped<IQuizRepository, QuizRepository>();
 builder.Services.AddScoped<IImageService, ImageService>();
+builder.Services.AddScoped<ICachingService, CachingService>();
+
 
 //Validation 
 

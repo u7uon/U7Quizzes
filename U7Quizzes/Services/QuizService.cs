@@ -2,9 +2,13 @@
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.Text;
+using System.Threading.Tasks;
 using U7Quizzes.AppData;
+using U7Quizzes.Caching;
 using U7Quizzes.DTOs.Quiz;
 using U7Quizzes.DTOs.Share;
+using U7Quizzes.Extensions;
 using U7Quizzes.IRepository;
 using U7Quizzes.IServices;
 using U7Quizzes.Models;
@@ -13,17 +17,21 @@ namespace U7Quizzes.Services
 {
     public class QuizService : IQuizService
     {
+        private const int PageSize = 10;
         private readonly IQuizRepository _repo;
         private readonly IMapper _mapper;
         private readonly ApplicationDBContext _context;
         private readonly IImageService _imageService;
+        private readonly ICachingService _cache;
 
-        public QuizService(IQuizRepository repo, IMapper mapper, ApplicationDBContext context, IImageService imageService)
+        public QuizService(IQuizRepository repo, IMapper mapper, ApplicationDBContext context, IImageService imageService, ICachingService cache)
         {
             _repo = repo;
             _mapper = mapper;
             _context = context;
             _imageService = imageService;
+
+            _cache = cache;
         }
 
         public async Task<List<QuizDTO>> GetAllAsync()
@@ -69,7 +77,7 @@ namespace U7Quizzes.Services
                         return question;
                     }).ToList();
 
-                    var created = await _repo.AddAsync(quiz);
+                    await _repo.AddAsync(quiz);
 
                     await transaction.CommitAsync();
                     return ServiceResponse<QuizDTO>.Success(new QuizDTO(), "Thêm quiz thành công");
@@ -90,7 +98,7 @@ namespace U7Quizzes.Services
         {
             using (var _transaction = await _context.Database.BeginTransactionAsync())
             {
-                //try
+                try
                 {
                     var quiz = await _repo.GetQuiz(dto.QuizId);
                     if (quiz == null) return false;
@@ -129,11 +137,11 @@ namespace U7Quizzes.Services
                     await _transaction.CommitAsync();
                     return true;
                 }
-                ////catch(Exception ex)
-                //{
-                //    await _transaction.RollbackAsync();
-                //    return false;
-                //}
+                catch (Exception)
+                {
+                    await _transaction.RollbackAsync();
+                    return false;
+                }
 
             }
         }
@@ -162,10 +170,93 @@ namespace U7Quizzes.Services
                 throw new Exception("Câu hỏi chọn nhiều phải có ít nhất 1 đáp án đúng");
         }
 
-        public Task<List<QuizDTO>> GetByTagName(string tagName)
+        public async Task<QuizFilter> GetByTagName(QuizFilter filter)
         {
-            return _repo.GetByTagsName(tagName);
-        }
-    }
+            string normalizedKeyword = string.IsNullOrWhiteSpace(filter.Keyword)
+                ? "all"
+                : filter.Keyword.Trim().ToLower();
 
+
+            var quizzes = await _cache.Get<IEnumerable<Quiz>>($"quiz:search:{normalizedKeyword}");
+            if (quizzes != null)
+            {
+                filter.Data = FilterInCache(quizzes, filter);
+                return filter;
+            }
+
+            else
+            {
+                var query = _repo.Search(filter.Keyword);
+
+                //await _cache.Set(T , CacheKey.GenerateKey(filter) );
+
+                var count = await query.CountAsync().ConfigureAwaitFalse();
+
+                var filteredData = await Filter(query, filter);
+
+
+                filter.Data = filteredData;
+
+                return filter;
+            }
+        }
+
+
+        private async Task<List<QuizSearch>> Filter(IQueryable<Quiz> query, QuizFilter filter)
+        {
+            if (filter.Tags is { Count: > 0 })
+            {
+                query = query.Where(q =>
+                    q.QuizTags.Any(qt => filter.Tags.Contains(qt.TagId)));
+            }
+
+            if (filter.Category is { Count: > 0 })
+            {
+                query = query.Where(q =>
+                    q.QuizCategories.Any(qc => filter.Category.Contains(qc.CategoryId)));
+            }
+
+            return await query.Select(x => new QuizSearch
+            {
+                QuizId = x.QuizId,
+                Title = x.Title,
+                ImageUrl = x.CoverImage,
+                TotalAttempts = x.Sessions != null ? x.Sessions.Count : 0,
+                QuestionCount = x.Questions != null ? x.Questions.Count : 0
+            }).Skip(PageSize * (filter.CurrentPage - 1))
+            .Take(PageSize)
+            .ToListAsync();
+        }
+
+        private List<QuizSearch> FilterInCache(IEnumerable<Quiz> query, QuizFilter filter)
+        {
+            if (filter.Tags is { Count: > 0 })
+            {
+                query = query.Where(q =>
+                    q.QuizTags.Any(qt => filter.Tags.Contains(qt.TagId)));
+            }
+
+            if (filter.Category is { Count: > 0 })
+            {
+                query = query.Where(q =>
+                    q.QuizCategories.Any(qc => filter.Category.Contains(qc.CategoryId)));
+            }
+
+            return query.Select(x => new QuizSearch
+            {
+                QuizId = x.QuizId,
+                Title = x.Title,
+                ImageUrl = x.CoverImage,
+                TotalAttempts = x.Sessions != null ? x.Sessions.Count : 0,
+                QuestionCount = x.Questions != null ? x.Questions.Count : 0
+            }).Skip(PageSize * (filter.CurrentPage - 1))
+            .Take(PageSize)
+            .ToList();
+        }
+
+
+
+    }
 }
+
+
