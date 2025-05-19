@@ -9,7 +9,7 @@ using System.Text.Json.Serialization;
 
 namespace U7Quizzes.Caching
 {
-    public class CachingService : ICachingService 
+    public class CachingService : ICachingService
     {
         private readonly IDistributedCache _cache;
 
@@ -64,7 +64,7 @@ namespace U7Quizzes.Caching
             foreach (PropertyInfo property in properties)
             {
                 var value = property.GetValue(filter);
-                if (value == null || value is int) continue;
+                if (value == null) continue;
 
                 key.Append(property.Name + "=");
 
@@ -80,7 +80,15 @@ namespace U7Quizzes.Caching
                 key.Append(";");
             }
 
-            return key.ToString().TrimEnd(';');
+            return  HashKey( key.ToString().TrimEnd(';'));
         }
-    }
+
+
+        private string HashKey(string input)
+        {
+            using var sha = SHA256.Create();
+            var bytes = sha.ComputeHash(Encoding.UTF8.GetBytes(input));
+            return Convert.ToHexString(bytes); // e.g., A1B2C3D4E...
+        }
+    }  
 }

@@ -30,8 +30,16 @@ namespace U7Quizzes.Controllers
         [HttpGet("search")]
         public async Task<IActionResult> Search([FromQuery] QuizFilter filter)
         {
-            var quizzes = await _quizService.GetByTagName(filter);
-            return quizzes is null ? NotFound() : Ok(quizzes);
+            try
+            {
+                var quizzes = await _quizService.GetByTagName(filter);
+                return quizzes is null || quizzes.Data is null ? NotFound() : Ok(quizzes);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { messsage = ex.Message });
+            }
+           
         }
 
         [HttpGet("{id}")]
@@ -45,8 +53,6 @@ namespace U7Quizzes.Controllers
         [Authorize(AuthenticationSchemes = "Bearer")]
         public async Task<IActionResult> Create([FromForm] string quiz , IFormFile image)
         {
-            Console.WriteLine(quiz);
-
             var creatorId = User.GetUserId();
 
             var dto = JsonConvert.DeserializeObject<QuizCreateDTO>(quiz);

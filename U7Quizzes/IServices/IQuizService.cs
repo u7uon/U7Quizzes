@@ -1,4 +1,6 @@
-﻿using U7Quizzes.DTOs.Quiz;
+﻿using Azure;
+using U7Quizzes.DTOs.Quiz;
+using U7Quizzes.DTOs.Response;
 using U7Quizzes.DTOs.Share;
 
 namespace U7Quizzes.IServices
@@ -12,6 +14,6 @@ namespace U7Quizzes.IServices
         Task<bool> DeleteAsync(int id);
 
 
-        Task<QuizFilter> GetByTagName(QuizFilter filter); 
+        Task<PagedResult<QuizSearch>> GetByTagName(QuizFilter filter); 
     }
 }

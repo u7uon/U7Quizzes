@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using U7Quizzes.AppData;
 using U7Quizzes.Caching;
 using U7Quizzes.DTOs.Quiz;
+using U7Quizzes.DTOs.Response;
 using U7Quizzes.DTOs.Share;
 using U7Quizzes.Extensions;
 using U7Quizzes.IRepository;
@@ -170,37 +171,37 @@ namespace U7Quizzes.Services
                 throw new Exception("Câu hỏi chọn nhiều phải có ít nhất 1 đáp án đúng");
         }
 
-        public async Task<QuizFilter> GetByTagName(QuizFilter filter)
+        public async Task<PagedResult<QuizSearch>> GetByTagName(QuizFilter filter)
         {
-            string normalizedKeyword = string.IsNullOrWhiteSpace(filter.Keyword)
-                ? "all"
-                : filter.Keyword.Trim().ToLower();
-
-
-            var quizzes = await _cache.Get<IEnumerable<Quiz>>($"quiz:search:{normalizedKeyword}");
-            if (quizzes != null)
+            string key = _cache.GenerateKey(filter);
+            
+            var data = await _cache.Get<PagedResult<QuizSearch>>(key);
+            if (data != null)
             {
-                filter.Data = FilterInCache(quizzes, filter);
-                return filter;
+                return data;
             }
 
             else
             {
                 var query = _repo.Search(filter.Keyword);
-
-                //await _cache.Set(T , CacheKey.GenerateKey(filter) );
-
                 var count = await query.CountAsync().ConfigureAwaitFalse();
-
                 var filteredData = await Filter(query, filter);
 
+                var result = new PagedResult<QuizSearch>()
+                {
+                    Data = filteredData,
+                    CurrentPage = filter.CurrentPage,
+                    MaxPage = (int)Math.Ceiling((double)count / PageSize)
+                };
 
-                filter.Data = filteredData;
+                await _cache.Set(result, key);
 
-                return filter;
+                return result;
+                
             }
-        }
+            
 
+        }
 
         private async Task<List<QuizSearch>> Filter(IQueryable<Quiz> query, QuizFilter filter)
         {
