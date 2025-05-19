@@ -1,16 +1,16 @@
 ﻿using U7Quizzes.DTOs.Quiz;
+using U7Quizzes.IServices;
 using U7Quizzes.Models;
+using U7Quizzes.Repository;
 
 namespace U7Quizzes.IRepository
 {
-    public interface IQuizRepository
+    public interface IQuizRepository :  IGenericRepository<Quiz>
     {
-        Task<List<QuizDTO>> GetByTagsName(string tagName);  
+        IQueryable<Quiz> Search(string key);  
         Task<List<QuizDTO>> GetAllAsync();
         Task<QuizDTO?> GetByIdAsync(int id);
-        Task<Quiz> GetQuiz(int id);
-        Task<Quiz> AddAsync(Quiz quiz);
-        Task UpdateAsync(Quiz quiz);
-        Task DeleteAsync(Quiz quiz);
+        Task<Quiz?> GetQuiz(int id);
+       
     }
 }

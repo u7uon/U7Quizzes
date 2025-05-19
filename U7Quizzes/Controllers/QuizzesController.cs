@@ -27,12 +27,12 @@ namespace U7Quizzes.Controllers
         }
 
 
-        [HttpGet("/{tagname}")]
-        public async Task<IActionResult> GetByTagsName([FromQuery] string tagname)
+        [HttpGet("search")]
+        public async Task<IActionResult> Search([FromQuery] QuizFilter filter)
         {
-            var quizzes = await _quizService.GetByTagName(tagname);
-            return quizzes is null ? NotFound() : Ok(quizzes); 
-        } 
+            var quizzes = await _quizService.GetByTagName(filter);
+            return quizzes is null ? NotFound() : Ok(quizzes);
+        }
 
         [HttpGet("{id}")]
         public async Task<IActionResult> GetById(int id)

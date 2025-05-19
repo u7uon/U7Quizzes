@@ -4,6 +4,8 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using System.Net.Security;
 using U7Quizzes.DTOs.Auth;
+using U7Quizzes.DTOs.Quiz;
+using U7Quizzes.Extensions;
 using U7Quizzes.IServices.Auth;
 
 namespace U7Quizzes.Controllers
@@ -134,11 +136,20 @@ namespace U7Quizzes.Controllers
 
 
         [HttpGet("check")]
-        [Authorize(AuthenticationSchemes = "Bearer")]
         public async Task<IActionResult> check()
         {
-            return Ok("alo");
+            var a = new QuizFilter
+            {
+                Tags = new List<int> { 1, 2, 23, 3, 5 },
+                Category = new List<int> { 5, 2, 23 },
+                Keyword = "akldkasdkj"
+
+            };
+            string key = CacheKey.GenerateKey(a); 
+            return Ok(key);
         }
+
+
 
     }
 }
