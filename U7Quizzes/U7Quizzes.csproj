@@ -40,11 +40,11 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="wwwroot\images\" />
+    <None Include="Extensions\CacheExtensionx.cs" />
   </ItemGroup>
 
   <ItemGroup>
-    <None Include="Extensions\CacheExtensionx.cs" />
+    <Folder Include="wwwroot\" />
   </ItemGroup>
 
 </Project>

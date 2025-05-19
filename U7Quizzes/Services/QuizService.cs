@@ -184,7 +184,7 @@ namespace U7Quizzes.Services
             else
             {
                 var query = _repo.Search(filter.Keyword);
-                var count = await query.CountAsync().ConfigureAwaitFalse();
+                var count = await query.CountAsync();
                 var filteredData = await Filter(query, filter);
 
                 var result = new PagedResult<QuizSearch>()
