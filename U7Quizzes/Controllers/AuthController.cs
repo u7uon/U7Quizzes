@@ -135,19 +135,6 @@ namespace U7Quizzes.Controllers
         }
 
 
-        [HttpGet("check")]
-        public async Task<IActionResult> check()
-        {
-            var a = new QuizFilter
-            {
-                Tags = new List<int> { 1, 2, 23, 3, 5 },
-                Category = new List<int> { 5, 2, 23 },
-                Keyword = "akldkasdkj"
-
-            };
-            string key = CacheKey.GenerateKey(a); 
-            return Ok(key);
-        }
 
 
 
