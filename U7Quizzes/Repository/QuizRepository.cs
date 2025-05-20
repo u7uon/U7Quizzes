@@ -13,7 +13,6 @@ namespace U7Quizzes.Repository
         private readonly IMapper _mapper;
         public QuizRepository(ApplicationDBContext context, IMapper mapper) : base(context)
         {
-
             _mapper = mapper;
         }
 

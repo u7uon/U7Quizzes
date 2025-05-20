@@ -119,6 +119,10 @@ if (app.Environment.IsDevelopment())
     app.MapOpenApi();
 }
 
+app.UseEndpoints(c =>
+    c.MapHub<QuizSessionHub>("/quizSessionHub"));
+    
+
 
 
 app.UseHttpsRedirection();
