@@ -32,7 +32,6 @@ namespace U7Quizzes.Caching
         {
             ValidateKey(key);
 
-
             var json = JsonSerializer.Serialize(data);
 
             await _cache.SetStringAsync(key, json, new DistributedCacheEntryOptions
