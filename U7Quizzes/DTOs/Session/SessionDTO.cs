@@ -4,6 +4,8 @@ namespace U7Quizzes.DTOs.Session
     public class SessionDTO
     {
         public int QuizId { get; set; }
+
+        public int SessionID { get; set; }
         public string AccessCode { get; set; }
 
         public string HostName { get; set;  }

@@ -1,5 +1,6 @@
 ﻿using System.Security.Claims;
 
+
 namespace U7Quizzes.Extensions
 {
     public static class ClaimsPrincipalExtensions
@@ -9,4 +10,5 @@ namespace U7Quizzes.Extensions
             return user.FindFirstValue(ClaimTypes.NameIdentifier);
         }
     }
+
 }
