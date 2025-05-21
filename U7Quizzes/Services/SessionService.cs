@@ -3,6 +3,7 @@ using System.CodeDom.Compiler;
 using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Query.SqlExpressions;
 using U7Quizzes.AppData;
 using U7Quizzes.DTOs.Session;
 using U7Quizzes.IRepository;
@@ -16,12 +17,15 @@ namespace U7Quizzes.Services
         private readonly ApplicationDBContext _context; 
         private readonly ISessionRepository _seRepos;
         private readonly IQuizRepository _qRepos;
+        
+        private readonly IUserRepository _userRepos;
 
-        public SessionService(ISessionRepository seRepos, IQuizRepository quizRepository , ApplicationDBContext context)
+        public SessionService(ISessionRepository seRepos, IQuizRepository quizRepository, ApplicationDBContext context, IUserRepository userRepos)
         {
-            _context = context; 
+            _context = context;
             _seRepos = seRepos;
             _qRepos = quizRepository;
+            _userRepos = userRepos; 
         }
 
         public async Task<SessionDTO> CreateSession(CreateSessionDTO request)
@@ -57,7 +61,49 @@ namespace U7Quizzes.Services
                 HostName = "newSession.Host.DisplayName"               
             }; 
         }
- 
+
+        public async Task<List<ParticipantDTO>> GetParticipants(string AccessCode)
+        {
+            return await _seRepos.GetParticipants(AccessCode)
+        };
+
+        public async Task<ParticipantDTO> JoinSession(ParticipantDTO request, string accessCode)
+        {
+
+            var session = await _seRepos.GetSesionByCode(accessCode);
+
+            if (session == null)
+                throw new Exception("session not exist");
+
+            var newParticipant = new Participant()
+            {
+                SessionId = session.SessionID
+            };
+
+            if (request.UserID != null)
+            {
+                var user = await _userRepos.GetUserProfile(request.UserID);
+
+                if (user == null) throw new Exception("User does not exists");
+
+                newParticipant.Nickname = user.DisplayName;
+                newParticipant.UserId = user.UserID;
+            }
+            else
+            {
+                newParticipant.Nickname = request.DisplayName;
+            }
+
+
+            await _context.Participant.AddAsync(newParticipant);
+            await _context.SaveChangesAsync();
+
+
+            return request; 
+
+            
+        }
+
         private async Task<string> GenerateCode() {
             var chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
             var rd = new Random();
@@ -72,8 +118,7 @@ namespace U7Quizzes.Services
                 isExist = await _context.Session.AnyAsync(x => x.AccessCode == code && !x.IsDeleted);
 
             }
-            while (isExist);
-
+            while (isExist); 
             return code; 
 
         }
