@@ -1,3 +1,4 @@
+using System.Text.Json.Serialization;
 using U7Quizzes.Models; 
 namespace U7Quizzes.DTOs.Session
 {
@@ -10,6 +11,9 @@ namespace U7Quizzes.DTOs.Session
 
         public string HostName { get; set;  }
 
+        public string SessionStatus => Status.ToString();  
+
+        [JsonIgnore]
         public SessionStatus Status { get; set; }
 
 

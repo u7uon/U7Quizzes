@@ -49,5 +49,10 @@ namespace U7Quizzes.Repository
             ).SingleOrDefaultAsync()
             .ConfigureAwaitFalse()   ; 
         }
+
+        public async Task<Session> GetSessionByID(int SessionId)
+        {
+            return await _dbSet.FindAsync(SessionId) ;
+        }
     }
 }
