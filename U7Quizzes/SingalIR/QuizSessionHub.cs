@@ -66,6 +66,8 @@ namespace U7Quizzes.SingalIR
                 var participants = await _seesion.GetParticipants(accesscode);
 
                 await Clients.Caller.SendAsync("Participants", participants);
+
+                
                 await Groups.AddToGroupAsync(Context.ConnectionId, $"session_{accesscode}");
                 await Clients.Group($"session_{accesscode}").SendAsync("NewJoined", joined);
 
