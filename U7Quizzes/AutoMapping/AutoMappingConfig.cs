@@ -24,6 +24,14 @@ namespace U7Quizzes.AutoMapping
 
             CreateMap<Question, QuestionDTO>();
             CreateMap<Answer, AnswerDTO>();
+
+
+            CreateMap<Answer, AnswerGetDTO>();
+
+            // Map Question -> QuestionGetDTO
+            CreateMap<Question, QuestionGetDTO>()
+                .ForMember(dest => dest.QuestionType, opt => opt.MapFrom(src => src.Type.ToString()))
+                .ForMember(dest => dest.Answers, opt => opt.MapFrom(src => src.Answers));
         }
 
     }

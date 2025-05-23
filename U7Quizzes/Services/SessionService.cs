@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Query.SqlExpressions;
 using U7Quizzes.AppData;
+using U7Quizzes.DTOs.Quiz;
 using U7Quizzes.DTOs.Session;
 using U7Quizzes.IRepository;
 using U7Quizzes.IServices;
@@ -14,10 +15,10 @@ namespace U7Quizzes.Services
 {
     public class SessionService : ISessionService
     {
-        private readonly ApplicationDBContext _context; 
+        private readonly ApplicationDBContext _context;
         private readonly ISessionRepository _seRepos;
         private readonly IQuizRepository _qRepos;
-        
+
         private readonly IUserRepository _userRepos;
 
         public SessionService(ISessionRepository seRepos, IQuizRepository quizRepository, ApplicationDBContext context, IUserRepository userRepos)
@@ -25,7 +26,7 @@ namespace U7Quizzes.Services
             _context = context;
             _seRepos = seRepos;
             _qRepos = quizRepository;
-            _userRepos = userRepos; 
+            _userRepos = userRepos;
         }
 
         public async Task<SessionDTO> CreateSession(CreateSessionDTO request)
@@ -39,7 +40,6 @@ namespace U7Quizzes.Services
 
             var newSession = new Session
             {
-
                 QuizId = request.QuizId,
                 HostId = request.HostId,
                 AccessCode = accessCode,
@@ -53,19 +53,20 @@ namespace U7Quizzes.Services
             await _qRepos.SaveChangesAsync();
 
 
-            return new SessionDTO 
+            return new SessionDTO
             {
+                SessionID = newSession.SessionId,
                 QuizId = newSession.QuizId,
                 AccessCode = accessCode,
                 Status = newSession.Status,
-                HostName = "newSession.Host.DisplayName"               
-            }; 
+                HostName = "newSession.Host.DisplayName"
+            };
         }
 
         public async Task<List<ParticipantDTO>> GetParticipants(string AccessCode)
         {
-            return await _seRepos.GetParticipants(AccessCode)
-        };
+            return await _seRepos.GetParticipants(AccessCode);
+        }
 
         public async Task<ParticipantDTO> JoinSession(ParticipantDTO request, string accessCode)
         {
@@ -74,6 +75,12 @@ namespace U7Quizzes.Services
 
             if (session == null)
                 throw new Exception("session not exist");
+
+
+            if (session.SessionStatus != SessionStatus.Waiting.ToString())
+            {
+                throw new Exception("Can't join this session");
+            }
 
             var newParticipant = new Participant()
             {
@@ -89,22 +96,48 @@ namespace U7Quizzes.Services
                 newParticipant.Nickname = user.DisplayName;
                 newParticipant.UserId = user.UserID;
             }
+
             else
             {
                 newParticipant.Nickname = request.DisplayName;
             }
 
-
             await _context.Participant.AddAsync(newParticipant);
             await _context.SaveChangesAsync();
 
 
-            return request; 
+            return request;
 
-            
+
         }
 
-        private async Task<string> GenerateCode() {
+        public async Task<List<QuestionGetDTO>> StartSession(int sessionId, string UserId)
+        {
+            var session = await _seRepos.GetSessionByID(sessionId);
+
+            if (session == null)
+                throw new NullReferenceException("Session not found");
+
+            if (!session.HostId.Equals(UserId))
+                throw new UnauthorizedAccessException("User is not allowed to access this session");
+
+
+            session.Status = SessionStatus.Active;
+            session.StartTime = DateTime.UtcNow; 
+
+            await _seRepos.UpdateAsync(session);
+            await _seRepos.SaveChangesAsync();
+
+
+            var questions = await _qRepos.GetQuestions(session.QuizId);
+
+
+            return questions;
+
+        }
+
+        private async Task<string> GenerateCode()
+        {
             var chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
             var rd = new Random();
             string code;
@@ -118,10 +151,10 @@ namespace U7Quizzes.Services
                 isExist = await _context.Session.AnyAsync(x => x.AccessCode == code && !x.IsDeleted);
 
             }
-            while (isExist); 
-            return code; 
+            while (isExist);
+            return code;
 
         }
-           
+
     }
 }
