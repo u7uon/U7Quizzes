@@ -84,11 +84,11 @@ namespace U7Quizzes.Services
                     return ServiceResponse<QuizDTO>.Success(new QuizDTO(), "Thêm quiz thành công");
                 }
 
-                catch (Exception ex)
+                catch (NullReferenceException ex)
                 {
                     await transaction.RollbackAsync();
 
-                    return ServiceResponse<QuizDTO>.Failure("Thêm quiz thất bại : " + ex.InnerException?.Message);
+                    return ServiceResponse<QuizDTO>.Failure("Thêm quiz thất bại : " + ex.Message);
 
                 }
             }
