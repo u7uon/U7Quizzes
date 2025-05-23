@@ -46,6 +46,16 @@ namespace U7Quizzes.Repository
 
             return quiz == null ? null : _mapper.Map<QuizDTO>(quiz);
         }
+
+        public async Task<List<QuestionGetDTO>> GetQuestions(int quizId)
+        {
+            var quiz =  await _dbSet.Include(x => x.Questions).ThenInclude(x => x.Answers).FirstOrDefaultAsync(x => x.QuizId == quizId);
+
+            return _mapper.Map<List<QuestionGetDTO>>(quiz.Questions); 
+        }
+
+
+
         public async Task<Quiz?> GetQuiz(int id)
         {
             var quiz = await _dbSet

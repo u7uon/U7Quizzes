@@ -4,6 +4,8 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.WebSockets;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using System.IdentityModel.Tokens.Jwt;
+using System.IO;
 using System.Text;
 using U7Quizzes.AppData;
 using U7Quizzes.Caching;
@@ -47,7 +49,32 @@ builder.Services.AddAuthentication(options =>
         IssuerSigningKey = new SymmetricSecurityKey(
             Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"]))
     };
+    options.Events = new JwtBearerEvents
+    {
+        OnMessageReceived = context =>
+        {
+
+            var accessToken = context.Request.Query["access_token"];
+
+            var path = context.HttpContext.Request.Path;
+            if (!string.IsNullOrEmpty(accessToken) &&
+                (path.StartsWithSegments("/quizSessionHub")))
+            {
+                context.Token = accessToken;
+            }
+            return Task.CompletedTask;
+        }
+    };
+
 });
+
+
+
+
+
+
+builder.Services.AddSignalR();
+builder.Services.AddEndpointsApiExplorer(); 
 
 
 //--- Cấu hình DI 
@@ -58,16 +85,15 @@ builder.Services.AddScoped<IQuizService, QuizService>();
 builder.Services.AddScoped<IQuizRepository, QuizRepository>();
 builder.Services.AddScoped<IImageService, ImageService>();
 builder.Services.AddScoped<ICachingService, CachingService>();
+builder.Services.AddScoped<ISessionService, SessionService>();
+builder.Services.AddScoped<ISessionRepository, SessionRepository>();
+
+builder.Services.AddScoped<IUserRepository, UserRepository>();
 
 
 //Validation 
 
 builder.Services.AddScoped<IValidator<RegisterDTO>, UserValidator >();
-
-
-
-
-
 
 
 // Cấu hình db
@@ -100,9 +126,24 @@ builder.Services.AddStackExchangeRedisCache(options =>
 
 
 
+builder.Services.AddCors(options =>
+{
+    options.AddDefaultPolicy(policy =>
+    {
+        policy.WithOrigins("http://localhost:5173")
+              .AllowAnyHeader()
+              .AllowAnyMethod()
+              .AllowCredentials(); // rất quan trọng cho SignalR
+    });
+});
+
+
+
+
+
 
 // === SignalR ===
-builder.Services.AddSignalR();
+
 
 
 builder.Services.AddWebSockets(options => {
@@ -111,38 +152,62 @@ builder.Services.AddWebSockets(options => {
 
 
 var app = builder.Build();
-
-
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
+
 }
 
-app.UseEndpoints(c =>
-    c.MapHub<QuizSessionHub>("/quizSessionHub"));
-    
+app.Use(async (context, next) =>
+{
 
+    var path = context.Request.Path;
+    var token = context.Request.Query["access_token"].ToString();
+
+    if (path.StartsWithSegments("/quizSessionHub") && !string.IsNullOrEmpty(token))
+    {
+        var tokenHandler = new JwtSecurityTokenHandler();
+
+        var validationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidateAudience = true,
+            ValidateLifetime = true,
+            ValidateIssuerSigningKey = true,
+            ValidIssuer = builder.Configuration["Jwt:Issuer"],
+            ValidAudience = builder.Configuration["Jwt:Audience"],
+            IssuerSigningKey = new SymmetricSecurityKey(
+            Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"]))
+        };
+
+        try
+        {
+            var principal = tokenHandler.ValidateToken(token, validationParameters, out var validatedToken);
+            context.User = principal;
+        }
+        catch
+        {
+            context.Response.StatusCode = 401;
+            return;
+        }
+    }
+
+    await next();
+});
 
 
 app.UseHttpsRedirection();
-
+app.UseRouting();
+app.UseCors();
 app.UseAuthentication();
-
 app.UseAuthorization();
-
-app.MapControllers();
-
-app.UseWebSockets(); // WebSocket
-app.UseAuthentication(); // Identity
-app.UseAuthorization();
-
-app.UseResponseCaching(); // Caching
-
-//app.UseEndpoints(endpoints =>
-//{
-//    endpoints.MapControllers();
-//    endpoints.MapHub<U7Hub>("/quizHub"); // SignalR realtime endpoint
-//});
+app.UseWebSockets(); 
+app.UseResponseCaching();
+app.UseEndpoints(endpoints =>
+{
+    endpoints.MapControllers();
+    endpoints.MapHub<QuizSessionHub>("/quizSessionHub");
+});
 
 app.Run();
