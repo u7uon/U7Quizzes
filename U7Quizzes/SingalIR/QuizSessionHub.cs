@@ -10,6 +10,7 @@ namespace U7Quizzes.SingalIR
     public class QuizSessionHub : Hub
     {
         private readonly ISessionService _seesion;
+        private SemaphoreSlim sem = new SemaphoreSlim(3, 5); 
 
         public QuizSessionHub(ISessionService seesion)
         {
