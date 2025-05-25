@@ -11,8 +11,6 @@ namespace U7Quizzes.IRepository
         Task<List<QuizDTO>> GetAllAsync();
         Task<QuizDTO?> GetByIdAsync(int id);
         Task<Quiz?> GetQuiz(int id);
-
-        Task<List<QuestionGetDTO>> GetQuestions(int quizId); 
        
     }
 }

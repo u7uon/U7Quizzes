@@ -4,6 +4,7 @@ using U7Quizzes.AppData;
 using U7Quizzes.Extensions;
 using U7Quizzes.IRepository;
 using U7Quizzes.Models;
+using U7Quizzes.Extensions;
 
 namespace U7Quizzes.Repository
 {
@@ -18,13 +19,13 @@ namespace U7Quizzes.Repository
 
         public async Task CreateAsync(RefreshToken refreshToken)
         {
-           await _context.RefreshTokens.AddAsync(refreshToken);
-           await _context.SaveChangesAsync(); 
+            await _context.RefreshTokens.AddAsync(refreshToken);
+            await _context.SaveChangesAsync();
         }
 
         public async Task DeleteAsync(RefreshToken refreshToken)
         {
-             _context.RefreshTokens.Remove(refreshToken);
+            _context.RefreshTokens.Remove(refreshToken);
             await _context.SaveChangesAsync();
         }
 

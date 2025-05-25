@@ -6,6 +6,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using U7Quizzes.Extensions;
 
 namespace U7Quizzes.Caching
 {
@@ -45,7 +46,7 @@ namespace U7Quizzes.Caching
         public async Task Remove(string key)
         {
             ValidateKey(key);
-            await _cache.RemoveAsync(key);
+            await _cache.RemoveAsync(key).ConfigureAwaitFalse();
         }
 
         private void ValidateKey(string key)
@@ -87,7 +88,7 @@ namespace U7Quizzes.Caching
         {
             using var sha = SHA256.Create();
             var bytes = sha.ComputeHash(Encoding.UTF8.GetBytes(input));
-            return Convert.ToHexString(bytes); // e.g., A1B2C3D4E...
+            return Convert.ToHexString(bytes); 
         }
     }  
 }

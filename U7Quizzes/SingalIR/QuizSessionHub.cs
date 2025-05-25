@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
+using U7Quizzes.DTOs.Quiz;
 using U7Quizzes.DTOs.Session;
 using U7Quizzes.IServices;
 
@@ -43,32 +44,20 @@ namespace U7Quizzes.SingalIR
         }
 
         [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
-        public async Task StartSession(int sessionId ,string acceessCode )
+        public async Task StartSession(int sessionId ,string accessCode)
         {
             try
             {
                 var questions = await _seesion.StartSession(sessionId, GetUserID());
 
-                await Clients.Group($"session_{acceessCode}").SendAsync("SessionStarted");
+                await Clients.Group($"session_{accessCode}").SendAsync("SessionStarted");
 
+                // Capture the current context
+                var groupClients = Clients.Group($"session_{accessCode}");
 
-                _ = Task.Run(async () =>
-                {
-                    await Task.Delay(3000);
-                    foreach (var question in questions)
-                    {
-                        await Clients.Group($"session_{acceessCode}").SendAsync("ReceiveQuestion", question);
-
-                        await Task.Delay(question.TimeLimit + 1000);
-                    }
-
-                    await Clients.Group($"session_{acceessCode}").SendAsync("SessionEndd");   
-                });
-
-                
-
+                // Start the question sequence without Task.Run
+                _ = SendQuestionsSequentially(groupClients, questions, accessCode);
             }
-
             catch (Exception ex)
             {
                 await Clients.Caller.SendAsync("Error", ex.Message);
@@ -135,7 +124,33 @@ namespace U7Quizzes.SingalIR
 
             return userId; 
         }
-        
-        
+
+        private async Task SendQuestionsSequentially(IClientProxy groupClients, List<QuestionGetDTO> questions, string accessCode)
+        {
+            try
+            {
+                await Task.Delay(3000);
+                Console.WriteLine("Starting question sequence");
+                Console.WriteLine($"Total questions: {questions.Count}");
+
+                foreach (var question in questions)
+                {
+                    Console.WriteLine($"Sending question: {question.Content}");
+                    await groupClients.SendAsync("ReceiveQuestion", question);
+
+                    // Wait for the time limit of this question
+                    await Task.Delay(question.TimeLimit);
+                }
+
+                Console.WriteLine("Session ended");
+                await groupClients.SendAsync("SessionEnded");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error in question sequence: {ex.Message}");
+                await groupClients.SendAsync("Error", $"Question sequence error: {ex.Message}");
+            }
+        }
+
     }
 }

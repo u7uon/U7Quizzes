@@ -1,4 +1,5 @@
 ﻿using AutoMapper;
+using AutoMapper.QueryableExtensions;
 using Microsoft.EntityFrameworkCore;
 using U7Quizzes.AppData;
 using U7Quizzes.DTOs.Quiz;
@@ -44,14 +45,7 @@ namespace U7Quizzes.Repository
                 .FirstOrDefaultAsync(q => q.QuizId == id && !q.IsDeleted)
                 .ConfigureAwaitFalse();
 
-            return quiz == null ? null : _mapper.Map<QuizDTO>(quiz);
-        }
-
-        public async Task<List<QuestionGetDTO>> GetQuestions(int quizId)
-        {
-            var quiz =  await _dbSet.Include(x => x.Questions).ThenInclude(x => x.Answers).FirstOrDefaultAsync(x => x.QuizId == quizId);
-
-            return _mapper.Map<List<QuestionGetDTO>>(quiz.Questions); 
+            return _mapper.Map<QuizDTO>(quiz);
         }
 
 

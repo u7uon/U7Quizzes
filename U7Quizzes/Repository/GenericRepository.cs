@@ -1,5 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using U7Quizzes.IServices;
+using U7Quizzes.Extensions;
 
 namespace U7Quizzes.Repository
 {

@@ -2,6 +2,7 @@
 using System.CodeDom.Compiler;
 using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
+using AutoMapper;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Query.SqlExpressions;
 using U7Quizzes.AppData;
@@ -18,15 +19,19 @@ namespace U7Quizzes.Services
         private readonly ApplicationDBContext _context;
         private readonly ISessionRepository _seRepos;
         private readonly IQuizRepository _qRepos;
+        private readonly IQuestionsRepository _quesRepos;
 
+        private readonly IMapper _map; 
         private readonly IUserRepository _userRepos;
 
-        public SessionService(ISessionRepository seRepos, IQuizRepository quizRepository, ApplicationDBContext context, IUserRepository userRepos)
+        public SessionService(ISessionRepository seRepos, IQuizRepository quizRepository, ApplicationDBContext context, IUserRepository userRepos,IMapper map, IQuestionsRepository quesRepos)
         {
             _context = context;
             _seRepos = seRepos;
             _qRepos = quizRepository;
             _userRepos = userRepos;
+            _map = map;
+            _quesRepos = quesRepos;
         }
 
         public async Task<SessionDTO> CreateSession(CreateSessionDTO request)
@@ -106,7 +111,7 @@ namespace U7Quizzes.Services
             await _context.SaveChangesAsync();
 
 
-            return request;
+            return _map.Map<ParticipantDTO>(newParticipant); 
 
 
         }
@@ -129,7 +134,7 @@ namespace U7Quizzes.Services
             await _seRepos.SaveChangesAsync();
 
 
-            var questions = await _qRepos.GetQuestions(session.QuizId);
+            var questions = await _quesRepos.GetQuestionsByQuizId(session.QuizId); 
 
 
             return questions;

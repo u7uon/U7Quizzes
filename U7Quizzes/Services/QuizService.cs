@@ -43,8 +43,18 @@ namespace U7Quizzes.Services
 
         public async Task<QuizDTO?> GetByIdAsync(int id)
         {
-            var quiz = await _repo.GetByIdAsync(id);
-            return quiz == null ? null : _mapper.Map<QuizDTO>(quiz);
+            var cacheQuiz = await _cache.Get<QuizDTO>($"quiz:id:{id}"); 
+
+            if(cacheQuiz == null)
+            {
+                var reposQuiz =  await _repo.GetByIdAsync(id);
+                if (reposQuiz != null)
+                    await _cache.Set<QuizDTO>(reposQuiz,$"quiz:id:{id}");
+
+                return reposQuiz; 
+            }
+
+            return cacheQuiz;
         }
 
         public async Task<ServiceResponse<QuizDTO>> CreateAsync(QuizCreateDTO dto, string creatorId)
@@ -79,8 +89,9 @@ namespace U7Quizzes.Services
                     }).ToList();
 
                     await _repo.AddAsync(quiz);
-
                     await transaction.CommitAsync();
+                    await _cache.Set<QuizDTO>(_mapper.Map<QuizDTO>(quiz), $"quiz:id:{quiz.QuizId}");
+
                     return ServiceResponse<QuizDTO>.Success(new QuizDTO(), "Thêm quiz thành công");
                 }
 
@@ -132,10 +143,11 @@ namespace U7Quizzes.Services
                     quiz.QuizTags = dto.TagIds
                         .Select(id => new QuizTag { QuizId = quiz.QuizId, TagId = id }).ToList();
 
-
-
                     await _repo.UpdateAsync(quiz);
                     await _transaction.CommitAsync();
+
+                    await _cache.Remove($"quiz:id:{dto.QuizId}");
+
                     return true;
                 }
                 catch (Exception)
@@ -147,15 +159,19 @@ namespace U7Quizzes.Services
             }
         }
         public async Task<bool> DeleteAsync(int id)
-        {
+        {   
             var quiz = await _repo.GetQuiz(id);
             if (quiz == null) return false;
 
-            await _repo.DeleteAsync(quiz);
+            quiz.IsDeleted = true;
+            quiz.DeletedAt = DateTime.UtcNow; 
+
+            await _repo.UpdateAsync(quiz);
+
+            await _cache.Remove($"quiz:id:{id}");
+
             return true;
         }
-
-
         private void ValidateQuestionLogic(QuestionCreateDTO q)
         {
             if (q.Type == QuestionType.SingleChoice && q.Answers.Count(a => a.IsCorrect) != 1)
@@ -230,31 +246,6 @@ namespace U7Quizzes.Services
             .ToListAsync();
         }
 
-        private List<QuizSearch> FilterInCache(IEnumerable<Quiz> query, QuizFilter filter)
-        {
-            if (filter.Tags is { Count: > 0 })
-            {
-                query = query.Where(q =>
-                    q.QuizTags.Any(qt => filter.Tags.Contains(qt.TagId)));
-            }
-
-            if (filter.Category is { Count: > 0 })
-            {
-                query = query.Where(q =>
-                    q.QuizCategories.Any(qc => filter.Category.Contains(qc.CategoryId)));
-            }
-
-            return query.Select(x => new QuizSearch
-            {
-                QuizId = x.QuizId,
-                Title = x.Title,
-                ImageUrl = x.CoverImage,
-                TotalAttempts = x.Sessions != null ? x.Sessions.Count : 0,
-                QuestionCount = x.Questions != null ? x.Questions.Count : 0
-            }).Skip(PageSize * (filter.CurrentPage - 1))
-            .Take(PageSize)
-            .ToList();
-        }
 
 
 
