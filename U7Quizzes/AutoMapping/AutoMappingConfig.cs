@@ -1,5 +1,6 @@
 ﻿using AutoMapper;
 using U7Quizzes.DTOs.Quiz;
+using U7Quizzes.DTOs.Session;
 using U7Quizzes.Models;
 
 namespace U7Quizzes.AutoMapping
@@ -32,6 +33,8 @@ namespace U7Quizzes.AutoMapping
             CreateMap<Question, QuestionGetDTO>()
                 .ForMember(dest => dest.QuestionType, opt => opt.MapFrom(src => src.Type.ToString()))
                 .ForMember(dest => dest.Answers, opt => opt.MapFrom(src => src.Answers));
+
+            CreateMap<ParticipantDTO, Participant>();
         }
 
     }

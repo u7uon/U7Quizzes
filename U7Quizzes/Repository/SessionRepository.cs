@@ -28,6 +28,7 @@ namespace U7Quizzes.Repository
                 .Where(p => !p.IsDeleted)
                 .Select(p => new ParticipantDTO
                 {
+                    ParticipantId = p.ParticipantId ,
                     UserID = p.UserId,
                     DisplayName = p.Nickname
                 })
@@ -52,7 +53,7 @@ namespace U7Quizzes.Repository
 
         public async Task<Session> GetSessionByID(int SessionId)
         {
-            return await _dbSet.FindAsync(SessionId) ;
+            return await _dbSet.FindAsync(SessionId).ConfigureAwait(false); 
         }
     }
 }

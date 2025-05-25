@@ -6,6 +6,9 @@ namespace U7Quizzes.DTOs.Quiz
     {
         public string Content { get; set; }
         public string Explanation { get; set; }
+
+        public int TimeLimit { get; set; }  
+
         public QuestionType Type { get; set; }
         public List<AnswerCreateDTO> Answers { get; set; }
     }

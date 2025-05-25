@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using U7Quizzes.AppData;
 using U7Quizzes.DTOs.Auth;
+using U7Quizzes.Extensions;
 using U7Quizzes.IRepository;
 
 namespace U7Quizzes.Repository
@@ -23,7 +24,8 @@ namespace U7Quizzes.Repository
                 DisplayName = x.DisplayName,
                 UserName = x.UserName 
             })
-            .SingleOrDefaultAsync(); 
+            .SingleOrDefaultAsync()
+            .ConfigureAwaitFalse(); 
         }
     }
 }
