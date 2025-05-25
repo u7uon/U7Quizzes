@@ -1,16 +1,20 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using CloudinaryDotNet;
+using CloudinaryDotNet.Actions;
+using Microsoft.AspNetCore.Mvc;
 using U7Quizzes.IServices;
 
 namespace U7Quizzes.Services
 {
     public class ImageService : IImageService
     {
+        private readonly Cloudinary _cloudinary; 
         private readonly IWebHostEnvironment _env;
         private static readonly string[] AllowedExtensions = { ".jpg", ".jpeg", ".png", ".webp" };
 
-        public ImageService(IWebHostEnvironment env)
+        public ImageService(IWebHostEnvironment env , Cloudinary cloudinary )
         {
             _env = env;
+            _cloudinary = cloudinary; 
         }
 
 
@@ -29,7 +33,7 @@ namespace U7Quizzes.Services
             var fullPath = Path.Combine(_env.WebRootPath, "images", fileName);
 
             if (!File.Exists(fullPath))
-                throw new FileNotFoundException("Không tìm thấy ảnh");
+                throw new FileNotFoundException("Image not found");
 
             var stream = new FileStream(fullPath, FileMode.Open, FileAccess.Read);
             var contentType = GetContentType(fileName);
@@ -61,6 +65,17 @@ namespace U7Quizzes.Services
 
             // Tạo tên file duy nhất
             var uniqueFileName = $"{Guid.NewGuid()}_{Path.GetFileName(image.FileName)}";
+
+            var uploadParams = new ImageUploadParams()
+            {
+                File = new FileDescription(image.FileName),
+                UseFilename = true,
+                UniqueFilename = false,
+                Overwrite = true
+            };
+
+            var uploadResult = _cloudinary.Upload(uploadParams);
+
             var imagePath = Path.Combine(_env.WebRootPath, "images", uniqueFileName);
 
             // Tạo thư mục nếu chưa có

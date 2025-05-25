@@ -1,14 +1,18 @@
-﻿using FluentValidation;
+﻿using CloudinaryDotNet;
+using dotenv.net;
+using FluentValidation;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.WebSockets;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
 using System.IO;
 using System.Text;
 using U7Quizzes.AppData;
 using U7Quizzes.Caching;
+using U7Quizzes.DTOs;
 using U7Quizzes.DTOs.Auth;
 using U7Quizzes.DTOs.Share;
 using U7Quizzes.Extensions;
@@ -22,6 +26,7 @@ using U7Quizzes.SingalIR;
 using U7Quizzes.Validators;
 
 var builder = WebApplication.CreateBuilder(args);
+
 
 // Add services to the container.
 
@@ -69,17 +74,24 @@ builder.Services.AddAuthentication(options =>
 });
 
 
-
-
-
-
 builder.Services.AddSignalR();
-builder.Services.AddEndpointsApiExplorer(); 
+builder.Services.AddEndpointsApiExplorer();
+
+
+builder.Services.Configure<CloudinarySettings>(builder.Configuration.GetSection("CloudinarySettings"));
+builder.Services.AddSingleton<Cloudinary>(op =>
+{
+    var settings = op.GetRequiredService<IOptions<CloudinarySettings>>().Value;
+    var account = new Account(settings.CloudName, settings.ApiKey, settings.ApiSecret);
+    return new Cloudinary(account);
+
+}
+    );
 
 
 //--- Cấu hình DI 
-builder.Services.AddScoped<IAuthService, AuthService>(); 
-builder.Services.AddScoped<ITokenService, TokenService>(); 
+builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddScoped<ITokenService, TokenService>();
 builder.Services.AddScoped<ITokenRepository, TokenRepository>();
 builder.Services.AddScoped<IQuizService, QuizService>();
 builder.Services.AddScoped<IQuizRepository, QuizRepository>();
@@ -93,7 +105,7 @@ builder.Services.AddScoped<IUserRepository, UserRepository>();
 
 //Validation 
 
-builder.Services.AddScoped<IValidator<RegisterDTO>, UserValidator >();
+builder.Services.AddScoped<IValidator<RegisterDTO>, UserValidator>();
 
 
 // Cấu hình db
@@ -146,7 +158,8 @@ builder.Services.AddCors(options =>
 
 
 
-builder.Services.AddWebSockets(options => {
+builder.Services.AddWebSockets(options =>
+{
     options.KeepAliveInterval = TimeSpan.FromSeconds(30);
 });
 
@@ -202,7 +215,7 @@ app.UseRouting();
 app.UseCors();
 app.UseAuthentication();
 app.UseAuthorization();
-app.UseWebSockets(); 
+app.UseWebSockets();
 app.UseResponseCaching();
 app.UseEndpoints(endpoints =>
 {
