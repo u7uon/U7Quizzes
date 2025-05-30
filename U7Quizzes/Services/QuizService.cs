@@ -90,12 +90,13 @@ namespace U7Quizzes.Services
 
                     await _repo.AddAsync(quiz);
                     await transaction.CommitAsync();
-                    await _cache.Set<QuizDTO>(_mapper.Map<QuizDTO>(quiz), $"quiz:id:{quiz.QuizId}");
+                    Console.WriteLine("Add sucess");
+                   // await _cache.Set<QuizDTO>(_mapper.Map<QuizDTO>(quiz), $"quiz:id:{quiz.QuizId}");
 
                     return ServiceResponse<QuizDTO>.Success(new QuizDTO(), "Thêm quiz thành công");
                 }
 
-                catch (NullReferenceException ex)
+                catch (Exception ex)
                 {
                     await transaction.RollbackAsync();
 

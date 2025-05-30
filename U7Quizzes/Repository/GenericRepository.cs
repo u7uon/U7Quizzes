@@ -18,6 +18,7 @@ namespace U7Quizzes.Repository
         public async Task AddAsync(T entity)
         {
            await  _dbSet.AddAsync(entity);
+            await SaveChangesAsync(); 
         }
 
         public async Task DeleteAsync(T entity)

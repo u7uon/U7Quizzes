@@ -56,40 +56,32 @@ namespace U7Quizzes.Services
         public async Task<string> UploadsAsync(IFormFile image)
         {
             if (image == null || image.Length == 0)
-                throw new ArgumentException("Ảnh không hợp lệ");
+                throw new ArgumentException("Image is null ");
 
 
             var extension = Path.GetExtension(image.FileName).ToLowerInvariant();
             if (!AllowedExtensions.Contains(extension))
-                throw new InvalidOperationException("Chỉ cho phép các định dạng ảnh: .jpg, .jpeg, .png, .webp");    
+                throw new InvalidOperationException("Only allow : .jpg, .jpeg, .png, .webp");    
 
-            // Tạo tên file duy nhất
-            var uniqueFileName = $"{Guid.NewGuid()}_{Path.GetFileName(image.FileName)}";
+
+            var sign = _cloudinary.Api.SignParameters()
+            await using var stream = image.OpenReadStream();
 
             var uploadParams = new ImageUploadParams()
             {
-                File = new FileDescription(image.FileName),
+                File = new FileDescription(image.FileName,stream),
                 UseFilename = true,
-                UniqueFilename = false,
-                Overwrite = true
+                UniqueFilename = true,
+                Overwrite = false
             };
 
-            var uploadResult = _cloudinary.Upload(uploadParams);
+            var uploadResult = await _cloudinary.UploadAsync(uploadParams);
 
-            var imagePath = Path.Combine(_env.WebRootPath, "images", uniqueFileName);
+            if (uploadResult.StatusCode != System.Net.HttpStatusCode.OK)
+                throw new Exception(uploadResult.Error?.Message);
 
-            // Tạo thư mục nếu chưa có
-            var directory = Path.GetDirectoryName(imagePath);
-            if (!Directory.Exists(directory))
-                Directory.CreateDirectory(directory!);
-
-            // Lưu file
-            using (var stream = new FileStream(imagePath, FileMode.Create))
-            {
-                await image.CopyToAsync(stream);
-            }
-
-            return $"{uniqueFileName}";
+            Console.WriteLine("Upload success");
+            return uploadResult.DisplayName;
         }
     }
 }

@@ -101,6 +101,7 @@ builder.Services.AddScoped<ISessionService, SessionService>();
 builder.Services.AddScoped<ISessionRepository, SessionRepository>();
 
 builder.Services.AddScoped<IUserRepository, UserRepository>();
+builder.Services.AddScoped<IQuestionsRepository, QuestionRepository>();
 
 
 //Validation 
@@ -145,7 +146,7 @@ builder.Services.AddCors(options =>
         policy.WithOrigins("http://localhost:5173")
               .AllowAnyHeader()
               .AllowAnyMethod()
-              .AllowCredentials(); // rất quan trọng cho SignalR
+              .AllowCredentials(); 
     });
 });
 
