@@ -11,12 +11,30 @@ namespace U7Quizzes.SingalIR
     public class QuizSessionHub : Hub
     {
         private readonly ISessionService _seesion;
-        private SemaphoreSlim sem = new SemaphoreSlim(3, 5); 
+        private readonly IResponseService _responseService;
 
-        public QuizSessionHub(ISessionService seesion)
+        private SemaphoreSlim sem = new SemaphoreSlim(3, 5);
+
+        public QuizSessionHub(ISessionService seesion, IResponseService responseService)
         {
             _seesion = seesion;
+            _responseService = responseService;
         }
+
+        public async Task SubmitAnswer(string AccessCode , ResponseSendDTO request)
+        {
+            try
+            {
+                var response = await _responseService.SendResponse(request);
+
+                await Clients.Group($"host_session_{AccessCode}").SendAsync("ResponseSubmited", response);
+            }
+            catch (Exception ex) {
+               await Clients.Caller.SendAsync("Error", ex.Message); 
+            }
+           
+        } 
+
             
         [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
         public async Task CreateSession(int quizId)
@@ -33,9 +51,9 @@ namespace U7Quizzes.SingalIR
                     QuizId = quizId
                 });
 
-
                 await Groups.AddToGroupAsync(Context.ConnectionId, $"session_{newSession.AccessCode}");
-                await Clients.Caller.SendAsync("SessionCreated",newSession );
+                await Groups.AddToGroupAsync(Context.ConnectionId, $"host_session_{newSession.AccessCode}");
+                await Clients.Caller.SendAsync("SessionCreated", newSession);
             }
             catch (Exception ex)
             {
@@ -95,7 +113,6 @@ namespace U7Quizzes.SingalIR
         {
             try
             {
-
                 var newParticipant = new ParticipantDTO {DisplayName = DisplayName};
 
                 var joined =   await _seesion.JoinSession(newParticipant, accessCode: accesscode);
@@ -112,11 +129,9 @@ namespace U7Quizzes.SingalIR
             {
                 await Clients.Caller.SendAsync("Error", ex.Message);
             }
-
-
         }
-
         private string GetUserID()
+
         {
             var userId = Context.User?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             if (string.IsNullOrEmpty(userId))

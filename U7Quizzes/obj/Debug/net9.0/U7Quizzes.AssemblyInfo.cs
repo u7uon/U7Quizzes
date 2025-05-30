@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("U7Quizzes")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+53b375f3d85c9e1cdd2965f7e5f8dff46d5bfcd9")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+92834c45ce7fabb0fcc882988c3ca8017d7cfa70")]
 [assembly: System.Reflection.AssemblyProductAttribute("U7Quizzes")]
 [assembly: System.Reflection.AssemblyTitleAttribute("U7Quizzes")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

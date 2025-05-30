@@ -19,7 +19,7 @@ namespace U7Quizzes.AutoMapping
             CreateMap<AnswerCreateDTO, Answer>();
 
             CreateMap<Quiz, QuizDTO>()
-                .ForMember(x => x.CoverImage , o => o.Ignore())
+                .ForMember(x => x.CoverImage, o => o.Ignore())
                 .ForMember(dest => dest.Categories, opt => opt.MapFrom(src => src.QuizCategories.Select(qc => qc.Category.Name)))
                 .ForMember(dest => dest.Tags, opt => opt.MapFrom(src => src.QuizTags.Select(qt => qt.Tag.Name)));
 
@@ -29,12 +29,17 @@ namespace U7Quizzes.AutoMapping
 
             CreateMap<Answer, AnswerGetDTO>();
 
-            
+
             CreateMap<Question, QuestionGetDTO>()
                 .ForMember(dest => dest.QuestionType, opt => opt.MapFrom(src => src.Type.ToString()))
                 .ForMember(dest => dest.Answers, opt => opt.MapFrom(src => src.Answers));
 
             CreateMap<ParticipantDTO, Participant>();
+
+
+            CreateMap<Answer, AnswerResponse>();
+
+            CreateMap<Response, ResponseDTO>(); 
         }
 
     }
