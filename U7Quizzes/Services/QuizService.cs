@@ -75,10 +75,6 @@ namespace U7Quizzes.Services
                     quiz.QuizTags = dto.TagIds
                         .Select(id => new QuizTag { TagId = id }).ToList();
 
-
-                    //Gán ảnh 
-                    quiz.CoverImage = await _imageService.UploadsAsync(dto.CoverImage);
-
                     // 4. Map & validate Questions
                     quiz.Questions = dto.Questions.Select(q =>
                     {
@@ -132,10 +128,6 @@ namespace U7Quizzes.Services
                         question.Answers = q.Answers.Select(a => _mapper.Map<Answer>(a)).ToList();
                         return question;
                     }).ToList();
-
-                    //gán ảnh mới nếu có
-                    if (dto.CoverImage != null)
-                        quiz.CoverImage = await _imageService.UploadsAsync(dto.CoverImage);
 
                     // ✅ Gán lại danh mục & tag mới 
                     quiz.QuizCategories = dto.CategoryIds

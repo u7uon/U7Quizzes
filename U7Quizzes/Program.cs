@@ -87,8 +87,6 @@ builder.Services.AddSingleton<Cloudinary>(op =>
 
 }
     );
-
-
 //--- Cấu hình DI 
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<ITokenService, TokenService>();

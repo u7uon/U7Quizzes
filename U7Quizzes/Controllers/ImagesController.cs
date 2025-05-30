@@ -1,4 +1,5 @@
 ﻿using FluentValidation.Validators;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using U7Quizzes.IServices;
 
@@ -23,14 +24,30 @@ namespace U7Quizzes.Controllers
             try
             {
                 var file = await _imageService.GetAsync(name);
-                return file; 
+                return file;
 
             }
-            catch(FileNotFoundException )
+            catch (FileNotFoundException)
             {
-                return NotFound(); 
-            } 
-           
+                return NotFound();
+            }
+
         }
+
+
+        [HttpGet("/upload")]
+        [Authorize]
+        public IActionResult GetUploadKey()
+        {
+            try
+            {
+                return Ok(_imageService.GenerateUploadKey());
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { Message = ex.Message });
+            }
+        }
+        
     }
 }

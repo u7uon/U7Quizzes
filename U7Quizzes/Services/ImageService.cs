@@ -1,20 +1,22 @@
-﻿using CloudinaryDotNet;
+﻿using System.Threading.Tasks;
+using CloudinaryDotNet;
 using CloudinaryDotNet.Actions;
 using Microsoft.AspNetCore.Mvc;
+using U7Quizzes.DTOs;
 using U7Quizzes.IServices;
 
 namespace U7Quizzes.Services
 {
     public class ImageService : IImageService
     {
-        private readonly Cloudinary _cloudinary; 
+        private readonly Cloudinary _cloudinary;
         private readonly IWebHostEnvironment _env;
         private static readonly string[] AllowedExtensions = { ".jpg", ".jpeg", ".png", ".webp" };
 
-        public ImageService(IWebHostEnvironment env , Cloudinary cloudinary )
+        public ImageService(IWebHostEnvironment env, Cloudinary cloudinary)
         {
             _env = env;
-            _cloudinary = cloudinary; 
+            _cloudinary = cloudinary;
         }
 
 
@@ -61,15 +63,14 @@ namespace U7Quizzes.Services
 
             var extension = Path.GetExtension(image.FileName).ToLowerInvariant();
             if (!AllowedExtensions.Contains(extension))
-                throw new InvalidOperationException("Only allow : .jpg, .jpeg, .png, .webp");    
+                throw new InvalidOperationException("Only allow : .jpg, .jpeg, .png, .webp");
 
-
-            var sign = _cloudinary.Api.SignParameters()
+            
             await using var stream = image.OpenReadStream();
 
             var uploadParams = new ImageUploadParams()
             {
-                File = new FileDescription(image.FileName,stream),
+                File = new FileDescription(image.FileName, stream),
                 UseFilename = true,
                 UniqueFilename = true,
                 Overwrite = false
@@ -82,6 +83,31 @@ namespace U7Quizzes.Services
 
             Console.WriteLine("Upload success");
             return uploadResult.DisplayName;
+        }
+
+
+
+        public  CloudKeyDTO GenerateUploadKey()
+        {
+            var timeSpan = TimeSpan.FromMinutes(3).ToString();
+
+            var para = new Dictionary<string, object>
+            {
+                {"timespan",timeSpan},
+                {"folder","u7quizzes_image"},
+                { "allowed_formats", "jpg,png,webp" }, 
+                { "resource_type", "image" }
+            };
+
+            var signature =  _cloudinary.Api.SignParameters(para);
+
+
+            return new CloudKeyDTO
+            {
+                Exp = timeSpan,
+                Signature = signature
+            }; 
+
         }
     }
 }
