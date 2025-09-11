@@ -92,8 +92,7 @@ namespace U7Quizzes.Controllers
 
         [HttpPost("register")]
         public async Task<IActionResult> Register([FromBody] RegisterDTO request)
-        {
-            
+        {   
             
             if (request == null)
             {

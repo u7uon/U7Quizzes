@@ -65,7 +65,8 @@ namespace U7Quizzes.Services
             if (!AllowedExtensions.Contains(extension))
                 throw new InvalidOperationException("Only allow : .jpg, .jpeg, .png, .webp");
 
-            
+
+            var sign = _cloudinary.Api.SignParameters()
             await using var stream = image.OpenReadStream();
 
             var uploadParams = new ImageUploadParams()

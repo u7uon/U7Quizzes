@@ -35,11 +35,6 @@ namespace U7Quizzes.AutoMapping
                 .ForMember(dest => dest.Answers, opt => opt.MapFrom(src => src.Answers));
 
             CreateMap<ParticipantDTO, Participant>();
-
-
-            CreateMap<Answer, AnswerResponse>();
-
-            CreateMap<Response, ResponseDTO>(); 
         }
 
     }

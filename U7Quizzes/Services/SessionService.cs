@@ -20,7 +20,6 @@ namespace U7Quizzes.Services
         private readonly ISessionRepository _seRepos;
         private readonly IQuizRepository _qRepos;
         private readonly IQuestionsRepository _quesRepos;
-
         private readonly IMapper _map; 
         private readonly IUserRepository _userRepos;
 
@@ -111,7 +110,12 @@ namespace U7Quizzes.Services
             await _context.SaveChangesAsync();
 
 
-            return _map.Map<ParticipantDTO>(newParticipant); 
+            return new ParticipantDTO
+            {
+                DisplayName = newParticipant.Nickname , 
+                UserID = newParticipant.UserId , 
+                ParticipantId = newParticipant.ParticipantId 
+            }; 
 
 
         }

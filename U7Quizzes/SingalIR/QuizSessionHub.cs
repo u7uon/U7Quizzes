@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
 using U7Quizzes.DTOs.Quiz;
 using U7Quizzes.DTOs.Session;
+using U7Quizzes.IRepository;
 using U7Quizzes.IServices;
 
 namespace U7Quizzes.SingalIR
@@ -11,14 +12,11 @@ namespace U7Quizzes.SingalIR
     public class QuizSessionHub : Hub
     {
         private readonly ISessionService _seesion;
-        private readonly IResponseService _responseService;
+        private SemaphoreSlim sem = new SemaphoreSlim(3, 5); 
 
-        private SemaphoreSlim sem = new SemaphoreSlim(3, 5);
-
-        public QuizSessionHub(ISessionService seesion, IResponseService responseService)
+        public QuizSessionHub(ISessionService seesion)
         {
             _seesion = seesion;
-            _responseService = responseService;
         }
 
         public async Task SubmitAnswer(string AccessCode , ResponseSendDTO request)
@@ -83,7 +81,7 @@ namespace U7Quizzes.SingalIR
         }
 
         [Authorize(AuthenticationSchemes = "Bearer")]
-        public async Task JoinSessionWithAuth(string accesscode)
+        public async Task JoinSessionWithAuth(string accesscode)    
         {
             try
             {
@@ -109,26 +107,26 @@ namespace U7Quizzes.SingalIR
 
         }
 
-        public  async Task JoinSession(string DisplayName, string accesscode)
+        public  async Task JoinSession( string accesscode)
         {
             try
             {
-                var newParticipant = new ParticipantDTO {DisplayName = DisplayName};
 
                 var joined =   await _seesion.JoinSession(newParticipant, accessCode: accesscode);
-                
-                var participants = await _seesion.GetParticipants(accesscode);
 
-                await Clients.Caller.SendAsync("Participants", participants);
+                await Clients.Caller.SendAsync("Joined", joined);
+
                 await Groups.AddToGroupAsync(Context.ConnectionId, $"session_{accesscode}");
-
-                await Clients.Group($"session_{accesscode}").SendAsync("NewJoined", joined);
 
             }
             catch (Exception ex)
             {
+                Console.WriteLine(ex.Message);
+                Console.WriteLine(ex.InnerException?.Message); 
                 await Clients.Caller.SendAsync("Error", ex.Message);
             }
+
+
         }
         private string GetUserID()
 

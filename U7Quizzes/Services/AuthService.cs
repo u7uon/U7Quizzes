@@ -130,13 +130,12 @@ namespace U7Quizzes.Services
 
             var newUser = new User
             {
-                UserName = string.Empty,
+                UserName = request.Username,
                 DisplayName = request.DisplayName,
                 Email = request.Email
             };
 
             
-
             var result = await _userManager.CreateAsync(newUser, request.Password).ConfigureAwaitFalse();
 
             if (!result.Succeeded)

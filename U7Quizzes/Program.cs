@@ -87,6 +87,14 @@ builder.Services.AddSingleton<Cloudinary>(op =>
 
 }
     );
+
+
+
+
+
+
+
+
 //--- Cấu hình DI 
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<ITokenService, TokenService>();
@@ -97,13 +105,12 @@ builder.Services.AddScoped<IImageService, ImageService>();
 builder.Services.AddScoped<ICachingService, CachingService>();
 builder.Services.AddScoped<ISessionService, SessionService>();
 builder.Services.AddScoped<ISessionRepository, SessionRepository>();
-
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IQuestionsRepository, QuestionRepository>();
+builder.Services.AddScoped<IParticipantRepository, ParticipantRepository>();
 
 
-//Validation 
-
+//Validation
 builder.Services.AddScoped<IValidator<RegisterDTO>, UserValidator>();
 
 
@@ -136,21 +143,16 @@ builder.Services.AddStackExchangeRedisCache(options =>
 });
 
 
-
 builder.Services.AddCors(options =>
 {
-    options.AddDefaultPolicy(policy =>
+    options.AddPolicy("AllowLocalhost", policy =>
     {
-        policy.WithOrigins("http://localhost:5173")
+        policy.WithOrigins("http://127.0.0.1:5501", "https://localhost:7282")
               .AllowAnyHeader()
               .AllowAnyMethod()
-              .AllowCredentials(); 
+              .AllowCredentials();
     });
 });
-
-
-
-
 
 
 // === SignalR ===
@@ -177,7 +179,7 @@ app.Use(async (context, next) =>
     var path = context.Request.Path;
     var token = context.Request.Query["access_token"].ToString();
 
-    if (path.StartsWithSegments("/quizSessionHub") && !string.IsNullOrEmpty(token))
+    if (path.StartsWithSegments("/quiz_session") && !string.IsNullOrEmpty(token))
     {
         var tokenHandler = new JwtSecurityTokenHandler();
 
@@ -210,8 +212,9 @@ app.Use(async (context, next) =>
 
 
 app.UseHttpsRedirection();
+app.UseCors("AllowLocalhost");
 app.UseRouting();
-app.UseCors();
+
 app.UseAuthentication();
 app.UseAuthorization();
 app.UseWebSockets();
@@ -219,7 +222,7 @@ app.UseResponseCaching();
 app.UseEndpoints(endpoints =>
 {
     endpoints.MapControllers();
-    endpoints.MapHub<QuizSessionHub>("/quizSessionHub");
+    endpoints.MapHub<QuizSessionHub>("/quiz_session");
 });
 
 app.Run();
