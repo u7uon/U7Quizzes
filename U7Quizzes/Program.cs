@@ -1,6 +1,8 @@
 ﻿using CloudinaryDotNet;
 using dotenv.net;
 using FluentValidation;
+using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Authentication.Google;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.WebSockets;
@@ -36,10 +38,22 @@ builder.Services.AddOpenApi();
 builder.Services.AddLogging();
 builder.Services.AddAutoMapper(typeof(Program));
 
+
 builder.Services.AddAuthentication(options =>
 {
-    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
-    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultScheme = CookieAuthenticationDefaults.AuthenticationScheme;
+    options.DefaultAuthenticateScheme = CookieAuthenticationDefaults.AuthenticationScheme;
+    options.DefaultSignInScheme = CookieAuthenticationDefaults.AuthenticationScheme;
+    options.DefaultChallengeScheme = GoogleDefaults.AuthenticationScheme; // mặc định challenge = Google
+})
+.AddCookie(
+
+    ) // cần để lưu state và thông tin user
+.AddGoogle(googleOptions =>
+{
+    googleOptions.ClientId = builder.Configuration["Google:ClientId"];
+    googleOptions.ClientSecret = builder.Configuration["Google:ClientSecret"];
+    // KHÔNG đặt CallbackPath, để mặc định /signin-google
 })
 .AddJwtBearer(options =>
 {
@@ -58,20 +72,16 @@ builder.Services.AddAuthentication(options =>
     {
         OnMessageReceived = context =>
         {
-
-            var accessToken = context.Request.Query["access_token"];
-
-            var path = context.HttpContext.Request.Path;
-            if (!string.IsNullOrEmpty(accessToken) &&
-                (path.StartsWithSegments("/quizSessionHub")))
-            {
-                context.Token = accessToken;
-            }
+            Console.WriteLine("access_token" + context.Request.Cookies["access_token"]);
+            context.Token = context.Request.Cookies["access_token"];
             return Task.CompletedTask;
         }
     };
-
 });
+
+
+
+
 
 
 builder.Services.AddSignalR();
@@ -133,6 +143,8 @@ builder.Services.AddIdentity<User, IdentityRole>(options =>
 .AddDefaultTokenProviders();
 
 
+builder.Services.AddRazorPages();
+
 //cấu hình caching
 builder.Services.AddResponseCaching();
 builder.Services.AddMemoryCache();
@@ -147,7 +159,7 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowLocalhost", policy =>
     {
-        policy.WithOrigins("http://127.0.0.1:5501", "https://localhost:7282")
+        policy.WithOrigins("http://127.0.0.1:5501", "https://localhost:7282"," http://localhost:5260")
               .AllowAnyHeader()
               .AllowAnyMethod()
               .AllowCredentials();
@@ -173,43 +185,6 @@ if (app.Environment.IsDevelopment())
 
 }
 
-app.Use(async (context, next) =>
-{
-
-    var path = context.Request.Path;
-    var token = context.Request.Query["access_token"].ToString();
-
-    if (path.StartsWithSegments("/quiz_session") && !string.IsNullOrEmpty(token))
-    {
-        var tokenHandler = new JwtSecurityTokenHandler();
-
-        var validationParameters = new TokenValidationParameters
-        {
-            ValidateIssuer = true,
-            ValidateAudience = true,
-            ValidateLifetime = true,
-            ValidateIssuerSigningKey = true,
-            ValidIssuer = builder.Configuration["Jwt:Issuer"],
-            ValidAudience = builder.Configuration["Jwt:Audience"],
-            IssuerSigningKey = new SymmetricSecurityKey(
-            Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"]))
-        };
-
-        try
-        {
-            var principal = tokenHandler.ValidateToken(token, validationParameters, out var validatedToken);
-            context.User = principal;
-        }
-        catch
-        {
-            context.Response.StatusCode = 401;
-            return;
-        }
-    }
-
-    await next();
-});
-
 
 app.UseHttpsRedirection();
 app.UseCors("AllowLocalhost");
@@ -222,6 +197,7 @@ app.UseResponseCaching();
 app.UseEndpoints(endpoints =>
 {
     endpoints.MapControllers();
+    endpoints.MapRazorPages();
     endpoints.MapHub<QuizSessionHub>("/quiz_session");
 });
 

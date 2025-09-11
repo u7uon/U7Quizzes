@@ -58,7 +58,7 @@ namespace U7Quizzes.Controllers
             var dto = JsonConvert.DeserializeObject<QuizCreateDTO>(quiz);
             if (dto == null) return BadRequest("Dữ liệu quiz không hợp lệ");
 
-            dto.CoverImage = image; 
+            //dto.CoverImage = image; 
 
             var result = await _quizService.CreateAsync(dto, creatorId);
 

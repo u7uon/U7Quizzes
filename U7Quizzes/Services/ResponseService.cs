@@ -2,7 +2,6 @@ using AutoMapper;
 using U7Quizzes.DTOs.Session;
 using U7Quizzes.IRepository;
 using U7Quizzes.IServices;
-using U7Quizzes.Migrations;
 using U7Quizzes.Models;
 using U7Quizzes.Repository;
 

@@ -12,11 +12,13 @@ namespace U7Quizzes.SingalIR
     public class QuizSessionHub : Hub
     {
         private readonly ISessionService _seesion;
+        private readonly IResponseService _responseService;
         private SemaphoreSlim sem = new SemaphoreSlim(3, 5); 
 
-        public QuizSessionHub(ISessionService seesion)
+        public QuizSessionHub(ISessionService seesion, IResponseService responseService)
         {
             _seesion = seesion;
+            _responseService = responseService;
         }
 
         public async Task SubmitAnswer(string AccessCode , ResponseSendDTO request)
@@ -107,7 +109,7 @@ namespace U7Quizzes.SingalIR
 
         }
 
-        public  async Task JoinSession( string accesscode)
+        public  async Task JoinSession(ParticipantDTO newParticipant,  string accesscode)
         {
             try
             {

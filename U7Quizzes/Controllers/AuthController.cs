@@ -1,8 +1,10 @@
-﻿using Microsoft.AspNetCore.Authorization;
+﻿using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using System.Net.Security;
+using System.Security.Claims;
 using U7Quizzes.DTOs.Auth;
 using U7Quizzes.DTOs.Quiz;
 using U7Quizzes.Extensions;
@@ -40,18 +42,28 @@ namespace U7Quizzes.Controllers
             }
 
             var refreshToken = result.Value.RefreshToken;
-            var cookieOptions = new CookieOptions
+            var refreshTokenCookieOptions = new CookieOptions
+            {
+                HttpOnly = true,
+                Secure = false,
+                SameSite = SameSiteMode.None,
+                Expires = DateTime.UtcNow.AddDays(7),
+                Path = "/"
+            };
+
+            var accessTokenCookieOptions = new CookieOptions
             {
                 HttpOnly = true,
                 Secure = true,
-                SameSite = SameSiteMode.Strict,
-                Expires = DateTime.UtcNow.AddDays(7),
-                Path = "/api/auth"
+                SameSite = SameSiteMode.None,
+                Expires = DateTime.UtcNow.AddMinutes(15),
+                Path = "/"
             };
 
-            Response.Cookies.Append("refreshToken", refreshToken, cookieOptions);
+            Response.Cookies.Append("refreshToken", refreshToken, refreshTokenCookieOptions);
+            Response.Cookies.Append("access_token", result.Value.Accesstoken, accessTokenCookieOptions);
 
-            return Ok(new { AccessToken = result.Value.Accesstoken });
+            return Ok();
         }
 
         [HttpPost("refresh-token")]
@@ -63,7 +75,7 @@ namespace U7Quizzes.Controllers
                 if (string.IsNullOrEmpty(refreshToken))
                 {
                     _logger.LogWarning("Refresh token không tồn tại trong request.");
-                    return Unauthorized(new { Message = "Token không tồn tại." });
+                    return Unauthorized();
                 }
 
                 var result = await _authService.RefreshToken(refreshToken);
@@ -86,7 +98,7 @@ namespace U7Quizzes.Controllers
             catch (Exception ex)
             {
                 _logger.LogError($"Lỗi trong RefreshToken: {ex.Message}");
-                return StatusCode(StatusCodes.Status500InternalServerError, new { Message = "Đã xảy ra lỗi hệ thống." });
+                return StatusCode(StatusCodes.Status500InternalServerError);
             }
         }
 
@@ -134,8 +146,69 @@ namespace U7Quizzes.Controllers
         }
 
 
+        [HttpGet("google-login")]
+        public IActionResult GoogleLogin()
+        {
+            var redirectUrl = Url.Action("GoogleCallback", "Auth", null, Request.Scheme);
+            var properties = new AuthenticationProperties { RedirectUri = redirectUrl };
+            return Challenge(properties, "Google");
+        }
 
+        [HttpGet("google-callback")]
+        public async Task<IActionResult> GoogleCallback()   
+        {
+            var result = await HttpContext.AuthenticateAsync("Google");
+            if (!result.Succeeded)
+            {
+                return BadRequest("Google authentication failed.");
+            }
 
+            var claims = result.Principal.Identities
+                .FirstOrDefault()?.Claims.Select(c => new { c.Type, c.Value });
+
+            var email = claims?.FirstOrDefault(c => c.Type == ClaimTypes.Email)?.Value;
+            var name = claims?.FirstOrDefault(c => c.Type == ClaimTypes.Name)?.Value;
+
+            // Kiểm tra nếu user đã tồn tại, nếu chưa thì tạo user mới
+            var user = await _authService.FindOrCreateGoogleUser(email, name);
+
+            // Tạo JWT token cho user
+            var token = await _authService.GenerateToken(user);
+
+            Response.Cookies.Append("access_token", token.Accesstoken, new CookieOptions
+            {
+                HttpOnly = true,
+                Secure = false,
+                SameSite = SameSiteMode.Lax,
+                Expires = DateTime.UtcNow.AddMinutes(15),
+
+                Path = "/"
+            });
+
+            Response.Cookies.Append("refreshToken", token.RefreshToken, new CookieOptions
+            {
+                HttpOnly = true,
+                Secure = false,
+                SameSite = SameSiteMode.Strict,
+                Expires = DateTime.UtcNow.AddDays(7),
+                Path = "/"
+            });
+
+            return Redirect("http://localhost:5260/"); 
+        }
+
+        [Authorize(AuthenticationSchemes = "Bearer")]
+        [HttpGet("me")]
+        public IActionResult Me()
+        {
+            var user = HttpContext.User;
+            _logger.LogDebug("Getting user info"); 
+            return Ok(new
+            {
+                Email = user.FindFirstValue(ClaimTypes.Email),
+                Name = user.FindFirstValue(ClaimTypes.Name)
+            });
+        }
 
     }
 }

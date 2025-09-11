@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.IdentityModel.Tokens;
 using Newtonsoft.Json.Linq;
 using System.IdentityModel.Tokens.Jwt;
+using System.Net.WebSockets;
 using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
@@ -21,20 +22,47 @@ namespace U7Quizzes.Services
         private readonly IConfiguration _configuration;
         private readonly UserManager<User> _userManager;
         private readonly SignInManager<User> _signInManager;
+        private readonly RoleManager<IdentityRole> _roleManager;
         private readonly ITokenService _tokenService;
         private readonly ILogger<AuthService> _logger;
         private readonly IValidator<RegisterDTO> _validator; 
 
 
-        public AuthService(IConfiguration configuration, UserManager<User> userManager, SignInManager<User> signInManager, ITokenService tokenService, ILogger<AuthService> logger, IValidator<RegisterDTO> v )
+        public AuthService(IConfiguration configuration, UserManager<User> userManager, SignInManager<User> signInManager, ITokenService tokenService, ILogger<AuthService> logger, IValidator<RegisterDTO> v ,RoleManager<IdentityRole> r)
         {
             _configuration = configuration;
             _userManager = userManager;
             _signInManager = signInManager;
             _tokenService = tokenService;
             _logger = logger;
-            _validator = v; 
+            _validator = v;
+            _roleManager = r;
         }
+
+        public async Task<TokenDTO> GenerateToken(User user)
+        {
+            return await _tokenService.GenerateToken(user, await _userManager.GetRolesAsync(user));
+        }
+
+        public async Task<User> FindOrCreateGoogleUser(string email, string name)
+        {
+
+
+            var user = await _userManager.FindByEmailAsync(email);
+            if (user == null)
+            {
+                user = new User
+                {
+                    UserName = email,
+                    Email = email,
+                    DisplayName = name
+                };
+                await _userManager.CreateAsync(user);
+                await _userManager.AddToRoleAsync(user, "User");
+            }
+            return user;
+        }
+
 
         public Task<ServiceResponse<LoginResponse>> ChangePassword(ResetPassDTO resetPassDTO)
         {

@@ -1,5 +1,6 @@
 ﻿using U7Quizzes.DTOs.Auth;
 using U7Quizzes.DTOs.Share;
+using U7Quizzes.Models;
 
 namespace U7Quizzes.IServices.Auth
 {
@@ -13,7 +14,9 @@ namespace U7Quizzes.IServices.Auth
 
         public Task<ServiceResponse<LoginResponse>> ChangePassword(ResetPassDTO resetPassDTO);
 
-
+        public Task<User> FindOrCreateGoogleUser(string email, string name); 
         public Task Logout(string refreshToken);
+
+        public Task<TokenDTO> GenerateToken(User user);
     }
 }
