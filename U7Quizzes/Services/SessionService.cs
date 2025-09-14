@@ -67,6 +67,44 @@ namespace U7Quizzes.Services
             };
         }
 
+        public async Task EndSession(int sessionId)
+        {
+            var session = await _seRepos.GetSessionByID(sessionId);
+
+            if (session == null)
+                throw new NullReferenceException("Session not found");
+
+            session.Status = session.Status != SessionStatus.Finished ? SessionStatus.Cancelled : throw new InvalidOperationException("Session is already finished");
+
+
+            session.UpdatedAt = DateTime.UtcNow;
+
+            await _seRepos.UpdateAsync(session);
+            
+            
+
+        }
+
+        public async Task FinishSession(int sessionId)
+        {
+            var session = await _seRepos.GetSessionByID(sessionId);
+
+            if (session == null)
+                throw new NullReferenceException("Session not found");
+
+                if (session.Status != SessionStatus.Cancelled || session.Status != SessionStatus.Finished)
+                {
+                session.Status = SessionStatus.Finished;
+                session.UpdatedAt = DateTime.UtcNow;
+                session.EndTime = DateTime.UtcNow;
+               
+                }
+            await _seRepos.UpdateAsync(session);
+            throw new InvalidOperationException("Session is already finished or cancelled");
+            
+            
+        }
+
         public async Task<List<ParticipantDTO>> GetParticipants(string AccessCode)
         {
             return await _seRepos.GetParticipants(AccessCode);
@@ -117,6 +155,40 @@ namespace U7Quizzes.Services
                 ParticipantId = newParticipant.ParticipantId 
             }; 
 
+
+        }
+
+        public async Task PauseSession(int sessionId)
+        {
+            var session = await _seRepos.GetSessionByID(sessionId);
+            if (session == null)
+                throw new NullReferenceException("Session not found");
+                
+            if (session.Status != SessionStatus.Cancelled || session.Status != SessionStatus.Finished)
+            {
+                session.Status = SessionStatus.Paused;
+                session.UpdatedAt = DateTime.UtcNow;
+                session.EndTime = DateTime.UtcNow;
+            }
+            await _seRepos.UpdateAsync(session);
+            throw new InvalidOperationException("Session is already finished or cancelled");
+
+        }
+
+        public async Task ResumeSession(int sessionId)
+        {
+             var session = await _seRepos.GetSessionByID(sessionId);
+            if (session == null)
+                throw new NullReferenceException("Session not found");
+                
+            if (session.Status == SessionStatus.Paused)
+            {
+                session.Status = SessionStatus.Active;
+                session.UpdatedAt = DateTime.UtcNow;
+                session.EndTime = DateTime.UtcNow;
+            }
+            await _seRepos.UpdateAsync(session);
+            throw new InvalidOperationException("Session is already finished or cancelled");
 
         }
 
