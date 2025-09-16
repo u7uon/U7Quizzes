@@ -6,6 +6,7 @@ using U7Quizzes.DTOs.Quiz;
 using U7Quizzes.DTOs.Session;
 using U7Quizzes.IRepository;
 using U7Quizzes.IServices;
+using U7Quizzes.Models;
 
 namespace U7Quizzes.SingalIR
 {
@@ -82,8 +83,40 @@ namespace U7Quizzes.SingalIR
             }
         }
 
-        [Authorize(AuthenticationSchemes = "Bearer")]
-        public async Task JoinSessionWithAuth(string accesscode)    
+        [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
+        public async Task EndSession(int sessionId)
+        {
+            await _seesion.EndSession(sessionId);
+
+            await Clients.Group($"session_{sessionId}").SendAsync("SessionEnded");
+            
+        }
+
+
+        [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
+        public async Task SetSessionStatus(string status, int sessionId)
+        {
+            switch (status)
+            {
+                case "Pause":
+                    await _seesion.PauseSession(sessionId);
+                    break;
+                case "Resume":
+                    await _seesion.ResumeSession(sessionId);
+                    break;
+                case "Cancel":
+                    await _seesion.EndSession(sessionId);
+                    break;
+                case "Finish":
+                    await _seesion.FinishSession(sessionId);
+                    break;
+                default:
+                    throw new HubException("Invalid session status");
+            }
+        }
+
+
+        public async Task JoinSession(string accesscode)
         {
             try
             {
@@ -91,12 +124,12 @@ namespace U7Quizzes.SingalIR
 
                 var newParticipant = new ParticipantDTO { UserID = UserID };
 
-                var joined =  await _seesion.JoinSession(newParticipant, accessCode: accesscode);
+                var joined = await _seesion.JoinSession(newParticipant, accessCode: accesscode);
                 var participants = await _seesion.GetParticipants(accesscode);
 
                 await Clients.Caller.SendAsync("Participants", participants);
 
-                
+
                 await Groups.AddToGroupAsync(Context.ConnectionId, $"session_{accesscode}");
                 await Clients.Group($"session_{accesscode}").SendAsync("NewJoined", joined);
 
@@ -108,28 +141,8 @@ namespace U7Quizzes.SingalIR
 
 
         }
+        
 
-        public  async Task JoinSession(ParticipantDTO newParticipant,  string accesscode)
-        {
-            try
-            {
-
-                var joined =   await _seesion.JoinSession(newParticipant, accessCode: accesscode);
-
-                await Clients.Caller.SendAsync("Joined", joined);
-
-                await Groups.AddToGroupAsync(Context.ConnectionId, $"session_{accesscode}");
-
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine(ex.Message);
-                Console.WriteLine(ex.InnerException?.Message); 
-                await Clients.Caller.SendAsync("Error", ex.Message);
-            }
-
-
-        }
         private string GetUserID()
 
         {
@@ -137,7 +150,7 @@ namespace U7Quizzes.SingalIR
             if (string.IsNullOrEmpty(userId))
                 throw new HubException("User not authenticated");
 
-            return userId; 
+            return userId;
         }
 
         private async Task SendQuestionsSequentially(IClientProxy groupClients, List<QuestionGetDTO> questions, string accessCode)

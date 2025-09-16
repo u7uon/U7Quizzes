@@ -44,6 +44,7 @@ namespace U7Quizzes.Models
         Waiting,
         Active,
         Paused,
-        Finished
+        Finished,
+        Cancelled
     }
 }

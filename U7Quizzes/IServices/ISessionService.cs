@@ -12,9 +12,16 @@ namespace U7Quizzes.IServices
 
         Task<List<ParticipantDTO>> GetParticipants(string AccessCode);
 
-        Task<List<QuestionGetDTO>> StartSession(int  sessionId, string UserID);
+        Task<List<QuestionGetDTO>> StartSession(int sessionId, string UserID);
+
+        Task EndSession(int sessionId);
+
+        Task PauseSession(int sessionId);
 
 
+        Task ResumeSession(int sessionId);
+          
+        Task FinishSession(int sessionId);
         
     }
 }
