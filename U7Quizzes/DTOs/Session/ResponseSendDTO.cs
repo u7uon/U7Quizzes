@@ -7,7 +7,9 @@ namespace U7Quizzes.DTOs.Session
     {
         public int ParticipantId { get; set; }
         public int QuestionID { get; set; } 
+
+        public string? TextAnswer { get; set; }
         
-        public int? AnswerId { get; set; }
+        public int[]? AnswerIds { get; set; }
     }
 }

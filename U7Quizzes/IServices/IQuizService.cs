@@ -11,7 +11,7 @@ namespace U7Quizzes.IServices
 
         Task<List<QuizDTO>> GetAllAsync();
         Task<QuizDTO?> GetByIdAsync(int id);
-        Task<ServiceResponse<QuizDTO>> CreateAsync(QuizCreateDTO dto, string creatorId);
+        Task<ServiceResponse<QuizDTO>> CreateAsync(QuizCreateDTO dto, string creatorId , IFormFile image);
         Task<bool> UpdateAsync(QuizUpdateDTO dto);
         Task<bool> DeleteAsync(int id);
 

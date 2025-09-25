@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.SignalR;
 using Newtonsoft.Json;
 using U7Quizzes.DTOs.Quiz;
 using U7Quizzes.Extensions;
@@ -13,7 +14,7 @@ namespace U7Quizzes.Controllers
     public class QuizzesController : Controller
     {
         private readonly IQuizService _quizService;
-
+        private IHubContext hubContext; 
         public QuizzesController(IQuizService quizService)
         {
             _quizService = quizService;
@@ -43,6 +44,7 @@ namespace U7Quizzes.Controllers
         }
 
         [HttpGet("{id}")]
+        
         public async Task<IActionResult> GetById(int id)
         {
             var quiz = await _quizService.GetByIdAsync(id);
@@ -60,7 +62,7 @@ namespace U7Quizzes.Controllers
 
             //dto.CoverImage = image; 
 
-            var result = await _quizService.CreateAsync(dto, creatorId);
+            var result = await _quizService.CreateAsync(dto, creatorId , image);
 
             if (result.IsSuccess)
             {
@@ -86,6 +88,13 @@ namespace U7Quizzes.Controllers
         {
             var deleted = await _quizService.DeleteAsync(id);
             return deleted ? NoContent() : NotFound();
+        }
+
+        [HttpGet("details/{id}")]
+        public async Task<IActionResult> GetDetails(int id)
+        {
+            var quiz = await _quizService.GetByIdAsync(id);
+            return quiz == null ? NotFound() : Ok(quiz);
         }
     }
 }

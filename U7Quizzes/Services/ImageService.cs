@@ -66,7 +66,7 @@ namespace U7Quizzes.Services
                 throw new InvalidOperationException("Only allow : .jpg, .jpeg, .png, .webp");
 
 
-            var sign = _cloudinary.Api.SignParameters()
+           
             await using var stream = image.OpenReadStream();
 
             var uploadParams = new ImageUploadParams()
@@ -83,7 +83,7 @@ namespace U7Quizzes.Services
                 throw new Exception(uploadResult.Error?.Message);
 
             Console.WriteLine("Upload success");
-            return uploadResult.DisplayName;
+            return  uploadResult.PublicId ;
         }
 
 

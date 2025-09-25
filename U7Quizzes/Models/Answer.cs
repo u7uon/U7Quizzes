@@ -26,6 +26,6 @@ namespace U7Quizzes.Models
 
         // Navigation properties
         public virtual Question Question { get; set; }
-        public virtual ICollection<Response> Responses { get; set; }
+        //public virtual ICollection<Response> Responses { get; set; }
     }
 }

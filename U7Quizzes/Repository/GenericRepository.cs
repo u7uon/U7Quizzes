@@ -23,7 +23,8 @@ namespace U7Quizzes.Repository
 
         public async Task DeleteAsync(T entity)
         {
-            _dbSet.Remove(entity); 
+            _dbSet.Remove(entity);
+            await SaveChangesAsync();
         }
 
         public async Task SaveChangesAsync()
@@ -34,6 +35,13 @@ namespace U7Quizzes.Repository
         public async Task UpdateAsync(T entity)
         {
             _dbSet.Update(entity);
+            await SaveChangesAsync();
+
+        }
+
+        public async Task<T> GetById(object id)
+        {
+           return await _dbSet.FindAsync(id);
         }
     }
 }

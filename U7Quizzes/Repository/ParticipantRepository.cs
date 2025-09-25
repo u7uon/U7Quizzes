@@ -12,6 +12,21 @@ namespace U7Quizzes.Repository
         {
         }
 
+        public async Task<Participant> GetByConnectionId(string connectionId)
+        {
+            return await _dbSet.FirstOrDefaultAsync(p => p.ConnectionId != null && p.ConnectionId == connectionId);
+            
+        }
+        public async Task<Participant> GetBySessionAndId(int sessionId , int participantId )
+        {
+            return await _dbSet.FirstOrDefaultAsync(x => x.ParticipantId == participantId && x.SessionId == sessionId);
+        }
+
+        public async Task<Participant> GetById( int participantId)
+        {
+            return await _dbSet.FirstOrDefaultAsync(x => x.ParticipantId == participantId );
+        }
+
         public async Task<ParticipantDTO> SetName(int id, string name)
         {
             var participant = await _dbSet.FirstOrDefaultAsync(p => p.ParticipantId == id);

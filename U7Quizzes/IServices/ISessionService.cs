@@ -12,6 +12,8 @@ namespace U7Quizzes.IServices
 
         Task<List<ParticipantDTO>> GetParticipants(string AccessCode);
 
+        Task<List<ParticipantDTO>> GetParticipantsBySessionId(int sessionId);
+
         Task<List<QuestionGetDTO>> StartSession(int sessionId, string UserID);
 
         Task EndSession(int sessionId);
@@ -22,6 +24,8 @@ namespace U7Quizzes.IServices
         Task ResumeSession(int sessionId);
           
         Task FinishSession(int sessionId);
-        
+
+        Task RemoveParticipant(int sessionId ,  int participantid , string userId); 
+
     }
 }

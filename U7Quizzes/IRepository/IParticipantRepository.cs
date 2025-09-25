@@ -8,5 +8,10 @@ namespace U7Quizzes.IRepository
     {
 
         Task<ParticipantDTO> SetName(int id, string name); 
+
+        Task<Participant> GetByConnectionId(string connectionId);
+        public Task<Participant> GetBySessionAndId(int sessionId, int participantId);
+
+        public Task<Participant> GetById(int participantId);
     }
 }

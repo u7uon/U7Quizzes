@@ -26,5 +26,10 @@ namespace U7Quizzes.Repository
         {
             return await _context.Answer.ProjectTo<AnswerResponse>(_map.ConfigurationProvider).FirstOrDefaultAsync(x => x.AnswerId == id).ConfigureAwaitFalse();
         }
+
+        public async Task<List<AnswerResponse>> GetAnswersByRange(int[] answerIds)
+        {
+            return await _context.Answer.ProjectTo<AnswerResponse>(_map.ConfigurationProvider).Where(x => answerIds.Contains(x.AnswerId)).ToListAsync();
+        }
     }
 }

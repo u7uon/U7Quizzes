@@ -8,7 +8,6 @@ using U7Quizzes.IRepository;
 using U7Quizzes.IServices.Auth;
 using U7Quizzes.Models;
 using Microsoft.Extensions.Logging;
-using Microsoft.EntityFrameworkCore.Storage.ValueConversion.Internal;
 
 namespace U7Quizzes.Services
 {
@@ -27,20 +26,29 @@ namespace U7Quizzes.Services
 
         public async Task<RefreshToken?> CheckFreshToken(string refreshToken)
         {
-            _logger.LogInformation("Checking refresh token: {RefreshToken}", refreshToken);
+            _logger.LogInformation("Checking refresh token");
 
+            if (string.IsNullOrEmpty(refreshToken))
+            {
+                _logger.LogWarning("Refresh token is null or empty");
+                return null;
+            }
+
+            // Hash token từ client để so sánh với DB (đã hash khi lưu)
             var hashedRefreshToken = HashToken(refreshToken);
             var token = await _tokenRepository.GetRefreshTokenByHash(hashedRefreshToken);
 
-            if (token == null || string.IsNullOrEmpty(token.Token))
+            if (token == null)
             {
-                _logger.LogWarning("Refresh token không tồn tại hoặc rỗng.");
+                _logger.LogWarning("Refresh token không tồn tại trong DB");
                 return null;
             }
 
             if (token.ExpiresAt <= DateTime.UtcNow)
             {
-                _logger.LogWarning("Refresh token đã hết hạn.");
+                _logger.LogWarning("Refresh token đã hết hạn");
+                // Xóa token đã hết hạn
+                await _tokenRepository.DeleteAsync(token);
                 return null;
             }
 
@@ -52,47 +60,60 @@ namespace U7Quizzes.Services
         {
             try
             {
-                _logger.LogInformation("Generating token for user {UserId}, roles: {Roles}", user.Id, string.Join(",", Roles));
+                _logger.LogInformation("Generating token for user {UserId}, roles: {Roles}",
+                    user.Id, string.Join(",", Roles));
 
                 var accessToken = GenerateAccessToken(user, Roles);
                 var refreshToken = GenerateRefreshToken();
 
+                // Lưu refresh token (sẽ được hash trong method này)
                 await SaveRefreshToken(refreshToken, user.Id);
 
-                _logger.LogInformation("Tạo token thành công cho  {UserId}", user.Id);
+                _logger.LogInformation("Tạo token thành công cho user {UserId}", user.Id);
 
                 return new TokenDTO
                 {
                     Accesstoken = accessToken,
-                    RefreshToken = refreshToken
+                    RefreshToken = refreshToken // Trả token gốc cho client
                 };
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Lỗi  khi tạo token {UserId}", user.Id);
+                _logger.LogError(ex, "Lỗi khi tạo token cho user {UserId}", user.Id);
                 throw new Exception("Có lỗi xảy ra khi tạo token mới", ex);
             }
         }
 
         private async Task SaveRefreshToken(string token, string userId)
         {
-            var hashedRefreshToken = HashToken(token);
-            var existingToken = await _tokenRepository.GetFreshTokenByUserId(userId).ConfigureAwait(false);
-
-            if (existingToken != null)
+            try
             {
-                await _tokenRepository.DeleteAsync(existingToken).ConfigureAwait(false);
+                // Hash token trước khi lưu DB (bảo mật)
+                var hashedRefreshToken = HashToken(token);
+
+                // Tìm và xóa token cũ nếu có
+                var existingToken = await _tokenRepository.GetFreshTokenByUserId(userId);
+                if (existingToken != null)
+                {
+                    await _tokenRepository.DeleteAsync(existingToken);
+                }
+
+                var newToken = new RefreshToken()
+                {
+                    Token = hashedRefreshToken, // Lưu token đã hash
+                    ExpiresAt = DateTime.UtcNow.AddDays(Convert.ToInt32(_configuration["Jwt:RefreshTokenExpiryInDays"])),
+                    CreatedAt = DateTime.UtcNow,
+                    UserId = userId
+                };
+
+                await _tokenRepository.CreateAsync(newToken);
+                _logger.LogInformation("Đã lưu refresh token mới cho user {UserId}", userId);
             }
-
-            var newToken = new RefreshToken()
+            catch (Exception ex)
             {
-                Token = hashedRefreshToken,
-                ExpiresAt = DateTime.UtcNow.AddDays(Convert.ToInt32(_configuration["Jwt:RefreshTokenExpiryInDays"])),
-                CreatedAt = DateTime.UtcNow,
-                UserId = userId
-            };
-
-            await _tokenRepository.CreateAsync(newToken).ConfigureAwait(false);
+                _logger.LogError(ex, "Lỗi khi lưu refresh token cho user {UserId}", userId);
+                throw;
+            }
         }
 
         private string GenerateAccessToken(User user, IList<string> Roles)
@@ -106,9 +127,15 @@ namespace U7Quizzes.Services
             {
                 new Claim(ClaimTypes.NameIdentifier, user.Id),
                 new Claim(ClaimTypes.Name, user.UserName),
-                new Claim(ClaimTypes.GivenName , user.DisplayName),
-                new Claim(ClaimTypes.Role, Roles.Any() ? Roles[0] : "User")
+                new Claim(ClaimTypes.GivenName, user.DisplayName),
+                new Claim(ClaimTypes.Role, Roles.Any() ? Roles.First() : "User")
             };
+
+            // Thêm tất cả roles nếu có nhiều role
+            foreach (var role in Roles)
+            {
+                claims.Add(new Claim(ClaimTypes.Role, role));
+            }
 
             var securityKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(key));
             var signingCredentials = new SigningCredentials(securityKey, SecurityAlgorithms.HmacSha256);
@@ -145,17 +172,32 @@ namespace U7Quizzes.Services
             }
         }
 
-        public async Task RevokeToken(string Token)
+        public async Task RevokeToken(string token)
         {
-            var hashedToken = HashToken(Token);
+            try
+            {
+                if (string.IsNullOrEmpty(token))
+                {
+                    throw new ArgumentException("Token không được để trống");
+                }
 
-            var existingToken = await _tokenRepository.GetRefreshTokenByHash(hashedToken);
+                var hashedToken = HashToken(token);
+                var existingToken = await _tokenRepository.GetRefreshTokenByHash(hashedToken);
 
-            if (existingToken is null || string.IsNullOrEmpty(existingToken.Token))
-                throw new Exception("Token không hợp lệ");
+                if (existingToken == null)
+                {
+                    _logger.LogWarning("Không tìm thấy token để revoke");
+                    throw new Exception("Token không hợp lệ hoặc đã được thu hồi");
+                }
 
-            await _tokenRepository.DeleteAsync(existingToken); 
-
+                await _tokenRepository.DeleteAsync(existingToken);
+                _logger.LogInformation("Đã thu hồi refresh token cho user {UserId}", existingToken.UserId);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Lỗi khi thu hồi token");
+                throw;
+            }
         }
     }
 }

@@ -5,6 +5,8 @@ namespace U7Quizzes.IRepository
 {
     public interface IAnswerRepository
     {
-        public Task<AnswerResponse?> GetAnswerById(int Id); 
+        public Task<AnswerResponse?> GetAnswerById(int Id);
+
+        public Task<List<AnswerResponse>> GetAnswersByRange(int[] answerIds); 
     }
 }

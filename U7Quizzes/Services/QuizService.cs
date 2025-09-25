@@ -57,7 +57,7 @@ namespace U7Quizzes.Services
             return cacheQuiz;
         }
 
-        public async Task<ServiceResponse<QuizDTO>> CreateAsync(QuizCreateDTO dto, string creatorId)
+        public async Task<ServiceResponse<QuizDTO>> CreateAsync(QuizCreateDTO dto, string creatorId, IFormFile image)
         {
             using (var transaction = await _context.Database.BeginTransactionAsync())
             {
@@ -70,6 +70,7 @@ namespace U7Quizzes.Services
                     // 2. Gán Categories
                     quiz.QuizCategories = dto.CategoryIds
                         .Select(id => new QuizCategory { CategoryId = id }).ToList();
+                    quiz.CoverImage = await _imageService.UploadsAsync(image); 
 
                     // 3. Gán Tags
                     quiz.QuizTags = dto.TagIds
@@ -86,7 +87,6 @@ namespace U7Quizzes.Services
 
                     await _repo.AddAsync(quiz);
                     await transaction.CommitAsync();
-                    Console.WriteLine("Add sucess");
                    // await _cache.Set<QuizDTO>(_mapper.Map<QuizDTO>(quiz), $"quiz:id:{quiz.QuizId}");
 
                     return ServiceResponse<QuizDTO>.Success(new QuizDTO(), "Thêm quiz thành công");

@@ -72,8 +72,23 @@ builder.Services.AddAuthentication(options =>
     {
         OnMessageReceived = context =>
         {
-            Console.WriteLine("access_token" + context.Request.Cookies["access_token"]);
-            context.Token = context.Request.Cookies["access_token"];
+            var path = context.HttpContext.Request.Path;
+
+            // ✅ Xử lý riêng cho SignalR
+            if (path.StartsWithSegments("/quiz_session"))
+            {
+                Console.WriteLine("heeeeeeeeeeee");
+                // SignalR: đọc từ query string trước, fallback sang cookie
+                var accessToken = context.Request.Query["access_token"].ToString();
+                Console.WriteLine(accessToken);
+                context.Token = accessToken;
+            }
+            else
+            {
+                // REST API: đọc từ cookie
+                context.Token = context.Request.Cookies["access_token"];
+            }
+
             return Task.CompletedTask;
         }
     };
@@ -118,6 +133,9 @@ builder.Services.AddScoped<ISessionRepository, SessionRepository>();
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IQuestionsRepository, QuestionRepository>();
 builder.Services.AddScoped<IParticipantRepository, ParticipantRepository>();
+builder.Services.AddScoped<IResponseService, ResponseService>();
+builder.Services.AddScoped<IResponseRepository, ResponseRepository>();
+builder.Services.AddScoped<IAnswerRepository, AnswerRepository>();
 
 
 //Validation
@@ -159,7 +177,7 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowLocalhost", policy =>
     {
-        policy.WithOrigins("http://127.0.0.1:5501", "https://localhost:7282"," http://localhost:5260")
+        policy.WithOrigins("http://localhost:5173")
               .AllowAnyHeader()
               .AllowAnyMethod()
               .AllowCredentials();
@@ -184,6 +202,42 @@ if (app.Environment.IsDevelopment())
     app.MapOpenApi();
 
 }
+app.Use(async (context, next) =>
+{
+
+    var path = context.Request.Path;
+    var token = context.Request.Query["access_token"].ToString();
+
+    if (path.StartsWithSegments("/quiz_session") && !string.IsNullOrEmpty(token))
+    {
+        var tokenHandler = new JwtSecurityTokenHandler();
+
+        var validationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidateAudience = true,
+            ValidateLifetime = true,
+            ValidateIssuerSigningKey = true,
+            ValidIssuer = builder.Configuration["Jwt:Issuer"],
+            ValidAudience = builder.Configuration["Jwt:Audience"],
+            IssuerSigningKey = new SymmetricSecurityKey(
+            Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"]))
+        };
+
+        try
+        {
+            var principal = tokenHandler.ValidateToken(token, validationParameters, out var validatedToken);
+            context.User = principal;
+        }
+        catch
+        {
+            context.Response.StatusCode = 401;
+            return;
+        }
+    }
+
+    await next();
+});
 
 
 app.UseHttpsRedirection();

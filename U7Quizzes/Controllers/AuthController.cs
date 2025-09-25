@@ -45,7 +45,7 @@ namespace U7Quizzes.Controllers
             var refreshTokenCookieOptions = new CookieOptions
             {
                 HttpOnly = true,
-                Secure = false,
+                Secure = true,
                 SameSite = SameSiteMode.None,
                 Expires = DateTime.UtcNow.AddDays(7),
                 Path = "/"
@@ -60,7 +60,7 @@ namespace U7Quizzes.Controllers
                 Path = "/"
             };
 
-            Response.Cookies.Append("refreshToken", refreshToken, refreshTokenCookieOptions);
+            Response.Cookies.Append("refresh_token", refreshToken, refreshTokenCookieOptions);
             Response.Cookies.Append("access_token", result.Value.Accesstoken, accessTokenCookieOptions);
 
             return Ok();
@@ -71,7 +71,7 @@ namespace U7Quizzes.Controllers
         {
             try
             {
-                var refreshToken = Request.Cookies["refreshToken"];
+                var refreshToken = Request.Cookies["refresh_token"];
                 if (string.IsNullOrEmpty(refreshToken))
                 {
                     _logger.LogWarning("Refresh token không tồn tại trong request.");
@@ -84,16 +84,25 @@ namespace U7Quizzes.Controllers
                     return Unauthorized(new { Message = result.Error });
                 }
 
-                Response.Cookies.Append("refreshToken", result.Value.RefreshToken, new CookieOptions
+                Response.Cookies.Append("refresh_token", result.Value.RefreshToken, new CookieOptions
                 {
                     HttpOnly = true,
                     Secure = true,
-                    SameSite = SameSiteMode.Strict,
+                    SameSite = SameSiteMode.None,
                     Expires = DateTime.UtcNow.AddDays(7),
-                    Path = "/api/auth"
+                    Path = "/"
                 });
 
-                return Ok(new { AccessToken = result.Value.Accesstoken });
+                Response.Cookies.Append("access_token", result.Value.Accesstoken, new CookieOptions
+                {
+                    HttpOnly = false,
+                    Secure = true,
+                    SameSite = SameSiteMode.None,
+                    Expires = DateTime.UtcNow.AddMinutes(15),
+                    Path = "/"
+                });
+
+                return Ok();
             }
             catch (Exception ex)
             {
@@ -127,20 +136,17 @@ namespace U7Quizzes.Controllers
         {
             try
             {
-                var refreshToken = Request.Cookies["refreshtoken"];
-                if (string.IsNullOrEmpty(refreshToken))
-                {
-                    return BadRequest(new { Message = "Yêu câu không hợp lệ" });
-                }
+                var refreshToken = Request.Cookies["refreshToken"];
 
                 await _authService.Logout(refreshToken);
-                Response.Cookies.Delete("refreshtoken");
+                Response.Cookies.Delete("refresh_token");
+                Response.Cookies.Delete("access_token");
 
                 return Ok();
             }
             catch(Exception ex)
             {
-                return BadRequest(new { Message = "Lỗi khi thực hiện yêu cầu: " + ex.Message });
+                return BadRequest(new { Message = "Xảy ra lỗi "});
             }
             
         }
@@ -177,24 +183,24 @@ namespace U7Quizzes.Controllers
 
             Response.Cookies.Append("access_token", token.Accesstoken, new CookieOptions
             {
-                HttpOnly = true,
-                Secure = false,
-                SameSite = SameSiteMode.Lax,
+                HttpOnly = false,
+                Secure = true,
+                SameSite = SameSiteMode.None,
                 Expires = DateTime.UtcNow.AddMinutes(15),
 
                 Path = "/"
             });
 
-            Response.Cookies.Append("refreshToken", token.RefreshToken, new CookieOptions
+            Response.Cookies.Append("refresh_token", token.RefreshToken, new CookieOptions
             {
                 HttpOnly = true,
-                Secure = false,
-                SameSite = SameSiteMode.Strict,
+                Secure = true,
+                SameSite = SameSiteMode.None,
                 Expires = DateTime.UtcNow.AddDays(7),
                 Path = "/"
             });
 
-            return Redirect("http://localhost:5260/"); 
+            return Redirect("http://localhost:5173"); 
         }
 
         [Authorize(AuthenticationSchemes = "Bearer")]

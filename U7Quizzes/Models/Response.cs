@@ -11,9 +11,7 @@ namespace U7Quizzes.Models
 
         public int QuestionId { get; set; }
 
-        public int? AnswerId { get; set; }
-
-        public string TextResponse { get; set; }
+        public string? TextResponse { get; set; }
 
         public bool IsCorrect { get; set; }
 
@@ -29,6 +27,6 @@ namespace U7Quizzes.Models
         // Navigation properties
         public virtual Participant Participant { get; set; }
         public virtual Question Question { get; set; }
-        public virtual Answer Answer { get; set; }
+        public ICollection<ResponseAnswer> ResponseAnswers { get; set; }
     }
 }

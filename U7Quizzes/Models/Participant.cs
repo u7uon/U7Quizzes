@@ -19,6 +19,8 @@ namespace U7Quizzes.Models
 
         public int? Rank { get; set; }
 
+        public string? ConnectionId { get; set; }
+
         public DateTime JoinTime { get; set; } = DateTime.UtcNow;
 
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;

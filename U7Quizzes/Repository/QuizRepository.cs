@@ -28,7 +28,6 @@ namespace U7Quizzes.Repository
                     Description = q.Description,
                     CoverImage = q.CoverImage,
                     IsPublic = q.IsPublic,
-                    CreatedAt = q.CreatedAt
                 }).ToListAsync()
                 .ConfigureAwaitFalse();
         }

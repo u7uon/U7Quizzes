@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using U7Quizzes.AppData;
 
@@ -11,9 +12,11 @@ using U7Quizzes.AppData;
 namespace U7Quizzes.Migrations
 {
     [DbContext(typeof(ApplicationDBContext))]
-    partial class ApplicationDBContextModelSnapshot : ModelSnapshot
+    [Migration("20250919065314_addCL_connectionID_Participant")]
+    partial class addCL_connectionID_Participant
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -267,6 +270,7 @@ namespace U7Quizzes.Migrations
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("ParticipantId"));
 
                     b.Property<string>("ConnectionId")
+                        .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<DateTime>("CreatedAt")
@@ -529,6 +533,7 @@ namespace U7Quizzes.Migrations
                         .HasColumnType("int");
 
                     b.Property<string>("TextResponse")
+                        .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
                     b.HasKey("ResponseId");
@@ -540,21 +545,6 @@ namespace U7Quizzes.Migrations
                     b.HasIndex("QuestionId");
 
                     b.ToTable("Response");
-                });
-
-            modelBuilder.Entity("U7Quizzes.Models.ResponseAnswer", b =>
-                {
-                    b.Property<int>("ResponseId")
-                        .HasColumnType("int");
-
-                    b.Property<int>("AnswerId")
-                        .HasColumnType("int");
-
-                    b.HasKey("ResponseId", "AnswerId");
-
-                    b.HasIndex("AnswerId");
-
-                    b.ToTable("ResponseAnswer");
                 });
 
             modelBuilder.Entity("U7Quizzes.Models.Session", b =>
@@ -921,9 +911,10 @@ namespace U7Quizzes.Migrations
 
             modelBuilder.Entity("U7Quizzes.Models.Response", b =>
                 {
-                    b.HasOne("U7Quizzes.Models.Answer", null)
+                    b.HasOne("U7Quizzes.Models.Answer", "Answer")
                         .WithMany("Responses")
-                        .HasForeignKey("AnswerId");
+                        .HasForeignKey("AnswerId")
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.HasOne("U7Quizzes.Models.Participant", "Participant")
                         .WithMany("Responses")
@@ -937,28 +928,11 @@ namespace U7Quizzes.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
+                    b.Navigation("Answer");
+
                     b.Navigation("Participant");
 
                     b.Navigation("Question");
-                });
-
-            modelBuilder.Entity("U7Quizzes.Models.ResponseAnswer", b =>
-                {
-                    b.HasOne("U7Quizzes.Models.Answer", "Answer")
-                        .WithMany()
-                        .HasForeignKey("AnswerId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("U7Quizzes.Models.Response", "Response")
-                        .WithMany("ResponseAnswers")
-                        .HasForeignKey("ResponseId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Answer");
-
-                    b.Navigation("Response");
                 });
 
             modelBuilder.Entity("U7Quizzes.Models.Session", b =>
@@ -1024,11 +998,6 @@ namespace U7Quizzes.Migrations
                     b.Navigation("QuizTags");
 
                     b.Navigation("Sessions");
-                });
-
-            modelBuilder.Entity("U7Quizzes.Models.Response", b =>
-                {
-                    b.Navigation("ResponseAnswers");
                 });
 
             modelBuilder.Entity("U7Quizzes.Models.Session", b =>

@@ -111,12 +111,18 @@ namespace U7Quizzes.AppData
                 .HasForeignKey(r => r.QuestionId)
                 .OnDelete(DeleteBehavior.Restrict); // ✨ Giải quyết multiple cascade path
 
-            modelBuilder.Entity<Response>()
-                .HasOne(r => r.Answer)
-                .WithMany(a => a.Responses)
-                .HasForeignKey(r => r.AnswerId)
-                .IsRequired(false)
-                .OnDelete(DeleteBehavior.Restrict); // ✨ Tránh cascade rắc rối
+            modelBuilder.Entity<ResponseAnswer>()
+     .HasKey(ra => new { ra.ResponseId, ra.AnswerId });
+
+            modelBuilder.Entity<ResponseAnswer>()
+                .HasOne(ra => ra.Response)
+                .WithMany(r => r.ResponseAnswers)
+                .HasForeignKey(ra => ra.ResponseId);
+
+            modelBuilder.Entity<ResponseAnswer>()
+                .HasOne(ra => ra.Answer)
+                .WithMany()
+                .HasForeignKey(ra => ra.AnswerId);
 
             // Category
             modelBuilder.Entity<QuizCategory>()

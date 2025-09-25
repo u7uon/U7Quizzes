@@ -7,5 +7,6 @@ namespace U7Quizzes.IRepository
     public interface IQuestionsRepository : IGenericRepository<Question>
     {
         Task<List<QuestionGetDTO>> GetQuestionsByQuizId(int SessionId);
+
     }
 }

@@ -13,7 +13,6 @@ namespace U7Quizzes.DTOs.Quiz
 
         public int TimeLimit { get; set; }
 
-        [JsonIgnore]
         public QuestionType Type { get; set; }
 
         public string QuestionType => Type.ToString(); 
