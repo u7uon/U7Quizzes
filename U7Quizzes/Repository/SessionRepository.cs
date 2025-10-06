@@ -29,7 +29,6 @@ namespace U7Quizzes.Repository
                 .Select(p => new ParticipantDTO
                 {
                     ParticipantId = p.ParticipantId ,
-                    UserID = p.UserId,
                     DisplayName = p.Nickname
                 })
                 .ToList();
@@ -49,6 +48,11 @@ namespace U7Quizzes.Repository
             }
             ).SingleOrDefaultAsync()
             .ConfigureAwaitFalse()   ; 
+        }
+
+        public async Task<Session> GetSessionByHostConnectionId(string connectionId)
+        {
+            return await _dbSet.FirstOrDefaultAsync(x => x.ConnectionId == connectionId); 
         }
 
         public async Task<Session> GetSessionByID(int SessionId)

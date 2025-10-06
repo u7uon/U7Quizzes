@@ -8,6 +8,7 @@ namespace U7Quizzes.IServices
     {
         Task<SessionDTO> CreateSession(CreateSessionDTO request);
 
+        Task<Leaderboard> GetLeaderBoard(int sessionId);
         Task<ParticipantDTO> JoinSession(ParticipantDTO request, string accessCode);
 
         Task<List<ParticipantDTO>> GetParticipants(string AccessCode);

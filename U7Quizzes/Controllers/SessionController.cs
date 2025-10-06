@@ -2,6 +2,8 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Identity.Client;
+using System.Net.WebSockets;
+using U7Quizzes.Attribute;
 using U7Quizzes.DTOs.Session;
 using U7Quizzes.Extensions;
 using U7Quizzes.IRepository;
@@ -70,6 +72,20 @@ namespace U7Quizzes.Controllers
             }
         }
 
+        [HttpGet("participants")]
+        public async Task<IActionResult> GetParticipantsByAcesscode([FromQuery]string acesscode)
+        {
+            try
+            {
+                var participants = await _seService.GetParticipants(acesscode);
+                return Ok(participants);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
 
         [HttpDelete("{sessionId}/participants/{participantId}")]
         [Authorize(AuthenticationSchemes = "Bearer")]
@@ -96,13 +112,12 @@ namespace U7Quizzes.Controllers
 
         }
 
-
+        [OptionalAuth]
         [HttpPost("join")]
         public async Task<IActionResult> AddParticipant([FromBody] AddParticipantRequest request)
         {
             try
             {
-
                 var participant = await _seService.JoinSession(new ParticipantDTO
                 {
                     DisplayName = request.DisplayName,
@@ -115,6 +130,18 @@ namespace U7Quizzes.Controllers
                 return BadRequest(new { message = ex.Message });
             }
         }
+
+
+        //[HttpGet("{id}/leaderboard")]
+        //public async Task<IActionResult> GetSessionLeadrboard(int id)
+        //{
+        //    if(id == 0)
+        //        return BadRequest();
+
+        //    var leaderboard = await 
+
+
+        //}
 
         public class AddParticipantRequest
         {

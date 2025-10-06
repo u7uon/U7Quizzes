@@ -61,6 +61,7 @@ namespace U7Quizzes.Services
 
             if (request.AnswerIds != null && request.AnswerIds.Any())
             {
+                Console.WriteLine("Manual submit");
                 var answerId = request.AnswerIds.First();
                 var answer = await _answerRepos.GetAnswerById(answerId);
 
@@ -78,6 +79,7 @@ namespace U7Quizzes.Services
             }
             else
             {
+                Console.WriteLine("Auto submit");
                 newResponse = new Response
                 {
                     ParticipantId = request.ParticipantId,
@@ -101,9 +103,8 @@ namespace U7Quizzes.Services
                     IsCorrect = false,
                     Score = 0
                 };
-            }
-            var selectedIds = request.AnswerIds ?? throw new NullReferenceException("Please choice least one "); 
-            //var answers = await _answerRepos.GetAnswersByIds(request.AnswerIds);
+            };
+            var selectedIds = request.AnswerIds;
             var correctAnswers = ques.Answers.Where(a => a.IsCorrect).Select(a => a.AnswerId).ToList();
 
             bool allCorrect = !correctAnswers.Except(request.AnswerIds).Any()
@@ -113,10 +114,8 @@ namespace U7Quizzes.Services
             {
                 ParticipantId = request.ParticipantId,
                 QuestionId = ques.QuestionId,
-                // Có thể lưu dưới dạng chuỗi danh sách Id (nếu model hỗ trợ nhiều đáp án thì cần bảng join)
                 IsCorrect = allCorrect,
                 Score = allCorrect ? ques.Points : 0 , 
-
                 ResponseAnswers = selectedIds.Select(id => new ResponseAnswer
                 {
                     AnswerId = id
@@ -138,7 +137,6 @@ namespace U7Quizzes.Services
                 };
             }
 
-            
             var correctAnswer = ques.Answers.FirstOrDefault(a => a.IsCorrect);
             bool isCorrect = correctAnswer != null &&
                              string.Equals(correctAnswer.Content?.Trim(),

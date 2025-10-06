@@ -14,7 +14,7 @@ namespace U7Quizzes.Repository
 
         public async Task<Participant> GetByConnectionId(string connectionId)
         {
-            return await _dbSet.FirstOrDefaultAsync(p => p.ConnectionId != null && p.ConnectionId == connectionId);
+            return await _dbSet.Include(x => x.Session).AsNoTracking().FirstOrDefaultAsync(p => p.ConnectionId != null && p.ConnectionId == connectionId);
             
         }
         public async Task<Participant> GetBySessionAndId(int sessionId , int participantId )

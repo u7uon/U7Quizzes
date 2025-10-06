@@ -1,10 +1,12 @@
-﻿using System.Security.Claims;
+﻿using System.Runtime.CompilerServices;
+using System.Security.Claims;
 using AutoMapper;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
 using U7Quizzes.DTOs.Quiz;
 using U7Quizzes.DTOs.Session;
+using U7Quizzes.Extensions;
 using U7Quizzes.IRepository;
 using U7Quizzes.IServices;
 using U7Quizzes.Models;
@@ -19,15 +21,17 @@ namespace U7Quizzes.SingalIR
         private readonly ISessionRepository _seRepository;
         private readonly IMapper mapper;
         private readonly IParticipantRepository _participantRepository; 
-        private SemaphoreSlim sem = new SemaphoreSlim(3, 5); 
+        private SemaphoreSlim sem = new SemaphoreSlim(3, 5);
+        private readonly IServiceScopeFactory _scopeFactory;
 
-        public QuizSessionHub(ISessionService seesion, IResponseService responseService , ISessionRepository sessionRepository , IMapper mapper , IParticipantRepository participantRepository)
+        public QuizSessionHub(ISessionService seesion, IResponseService responseService , ISessionRepository sessionRepository , IMapper mapper , IParticipantRepository participantRepository, IServiceScopeFactory scopeFactory)
         {
             _seesion = seesion;
             _responseService = responseService;
             _seRepository = sessionRepository;
             this.mapper = mapper;
             _participantRepository = participantRepository;
+            _scopeFactory = scopeFactory;
         }
 
         public async Task SubmitAnswer(string AccessCode , ResponseSendDTO request)
@@ -53,14 +57,16 @@ namespace U7Quizzes.SingalIR
             {
                 var userId = Context.User?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
 
-                var session = await _seRepository.GetSessionByID(sessionId); 
+                var session = await _seRepository.GetSessionByID(sessionId);
 
-                if(session == null)
+                if (session == null)
                     await Clients.Caller.SendAsync("SessionNotFound");
 
                 else if (session.HostId != userId)
                     await Clients.Caller.SendAsync("SessionNotFound");
 
+                else if (session.Status == SessionStatus.Cancelled || session.Status == SessionStatus.Finished)
+                    await Clients.Caller.SendAsync("SessionNotfound");
                 else
                 {
                     await Groups.AddToGroupAsync(Context.ConnectionId, $"session_{session.AccessCode}");
@@ -89,7 +95,7 @@ namespace U7Quizzes.SingalIR
                 var groupClients = Clients.Group($"session_{accessCode}");
 
                 // Start the question sequence without Task.Run
-                _ = SendQuestionsSequentially(groupClients, questions, accessCode);
+                _ = SendQuestionsSequentially(groupClients, questions, accessCode,sessionId);
             }
             catch (Exception ex)
             {
@@ -129,15 +135,13 @@ namespace U7Quizzes.SingalIR
             }
         }
 
-
-
         public async Task JoinSession(int paticipantId , string accesscode)
         {
             try
             {
                 var participant = await _participantRepository.GetByConnectionId(Context.ConnectionId); 
                 if(participant == null)
-                {
+                { 
                     participant = await _participantRepository.GetById(paticipantId);
                     participant.ConnectionId = Context.ConnectionId;
                     await _participantRepository.SaveChangesAsync();
@@ -145,12 +149,10 @@ namespace U7Quizzes.SingalIR
                     var participants = await _seesion.GetParticipants(accesscode);
 
                     await Clients.Caller.SendAsync("Participants", participants);
-                    await Clients.Group($"session_{accesscode}").SendAsync("NewJoined", new ParticipantDTO { ConnectionId = participant.ConnectionId, ParticipantId = participant.ParticipantId, DisplayName = participant.Nickname, UserID = participant.UserId });
+                    await Clients.Group($"session_{accesscode}").SendAsync("NewJoined", new ParticipantDTO { ConnectionId = participant.ConnectionId, ParticipantId = participant.ParticipantId, DisplayName = participant.Nickname });
                     await Groups.AddToGroupAsync(Context.ConnectionId, $"session_{accesscode}");
                 }
 
-
-               
             }
             catch (Exception ex)
             {
@@ -159,47 +161,54 @@ namespace U7Quizzes.SingalIR
 
         }
 
-
         public async Task LeaveSession(int participantId ,string accesscode)
         {
             var par = await _participantRepository.GetById(participantId);
+            if(par != null)
+            {
+                await Clients.Group($"session_{accesscode}").SendAsync("ParticipantLeft", participantId);
+                await Groups.RemoveFromGroupAsync(Context.ConnectionId, $"session_{accesscode}");
+                await _participantRepository.DeleteAsync(par);
 
-            await Clients.Group($"session_{accesscode}").SendAsync("ParticipantLeft", participantId);
-            await Groups.RemoveFromGroupAsync(Context.ConnectionId, $"session_{accesscode}");
-
-            await _participantRepository.DeleteAsync(par);
+            }
 
         }
 
         private string GetUserID()
-
         {
-            var userId = Context.User?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            var userId = Context.User?.GetUserId() ;
             if (string.IsNullOrEmpty(userId))
                 throw new HubException("User not authenticated");
 
             return userId;
         }
 
-        private async Task SendQuestionsSequentially(IClientProxy groupClients, List<QuestionGetDTO> questions, string accessCode)
+
+        private async Task SendQuestionsSequentially(IClientProxy groupClients, List<QuestionGetDTO> questions, string accessCode, int sessionId)
         {
             try
             {
                 await Task.Delay(3000);
-                Console.WriteLine("Starting question sequence");
-                Console.WriteLine($"Total questions: {questions.Count}");
 
                 foreach (var question in questions)
                 {
                     Console.WriteLine($"Sending question: {question.Content}");
                     await groupClients.SendAsync("ReceiveQuestion", question);
-
-                    // Wait for the time limit of this question
                     await Task.Delay(question.TimeLimit + 3000);
                 }
 
-                Console.WriteLine("Session ended");
                 await groupClients.SendAsync("SessionEnded");
+
+                // ✅ Use IServiceScopeFactory to create a new scope
+                using (var scope = _scopeFactory.CreateScope())
+                {
+                    var sessionService = scope.ServiceProvider.GetRequiredService<ISessionService>();
+
+                    var leaderboard = await sessionService.GetLeaderBoard(sessionId);
+                    await groupClients.SendAsync("Leaderboard", leaderboard);
+
+                    await sessionService.EndSession(sessionId);
+                }
             }
             catch (Exception ex)
             {
@@ -207,6 +216,34 @@ namespace U7Quizzes.SingalIR
                 await groupClients.SendAsync("Error", $"Question sequence error: {ex.Message}");
             }
         }
-
     }
 }
+
+
+    //public override async Task OnDisconnectedAsync(Exception? exception)
+    //{
+    //    // Handle disconnect for participant
+    //    var par = await _participantRepository.GetByConnectionId(Context.ConnectionId);
+    //    if (par != null)
+    //    {
+    //        await Clients.Group($"session_{par.Session.AccessCode}").SendAsync("ParticipantLeft", par.ParticipantId);
+    //        await Groups.RemoveFromGroupAsync(Context.ConnectionId, $"session_{par.Session.AccessCode}");
+    //        await  _participantRepository.DeleteAsync(par);
+    //        return;
+
+    //    }    
+
+    //    //handle disconnect for host
+    //    var session = await  _seRepository.GetSessionByHostConnectionId(Context.ConnectionId);
+    //    if(session != null)
+    //    {
+    //        await _seesion.EndSession(session.SessionId);
+    //        await _seesion.EndSession(session.SessionId);
+    //        //await Clients.Group($"session_{sessionId}").SendAsync("SessionEnded");
+    //        await Clients.Group($"session_{session.AccessCode}").SendAsync("SessionClosed");
+
+    //    }
+
+
+    //}
+

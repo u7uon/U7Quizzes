@@ -12,6 +12,8 @@ using U7Quizzes.IRepository;
 using U7Quizzes.IServices;
 using U7Quizzes.Models;
 using U7Quizzes.Extensions;
+using U7Quizzes.Caching;
+using System.Collections.Generic;
 
 namespace U7Quizzes.Services
 {
@@ -21,11 +23,13 @@ namespace U7Quizzes.Services
         private readonly ISessionRepository _seRepos;
         private readonly IQuizRepository _qRepos;
         private readonly IQuestionsRepository _quesRepos;
-        private readonly IMapper _map; 
+        private readonly IMapper _map;
         private readonly IUserRepository _userRepos;
-        private readonly IParticipantRepository _participantRepository; 
+        private readonly IParticipantRepository _participantRepository;
 
-        public SessionService(ISessionRepository seRepos, IQuizRepository quizRepository, ApplicationDBContext context, IUserRepository userRepos,IMapper map, IQuestionsRepository quesRepos, IParticipantRepository repository )
+        private readonly ICachingService _cache;
+
+        public SessionService(ISessionRepository seRepos, IQuizRepository quizRepository, ApplicationDBContext context, IUserRepository userRepos, IMapper map, IQuestionsRepository quesRepos, IParticipantRepository repository, ICachingService caching)
         {
             _context = context;
             _seRepos = seRepos;
@@ -34,6 +38,7 @@ namespace U7Quizzes.Services
             _map = map;
             _quesRepos = quesRepos;
             _participantRepository = repository;
+            _cache = caching;
         }
 
         public async Task<SessionDTO> CreateSession(CreateSessionDTO request)
@@ -53,7 +58,6 @@ namespace U7Quizzes.Services
                 Status = SessionStatus.Waiting,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow,
-                QrCodeUrl = $"https://yourdomain.com/join/{accessCode}"
             };
 
             await _seRepos.AddAsync(newSession);
@@ -77,14 +81,14 @@ namespace U7Quizzes.Services
             if (session == null)
                 throw new NullReferenceException("Session not found");
 
-            session.Status = session.Status != SessionStatus.Finished ? SessionStatus.Cancelled : throw new InvalidOperationException("Session is already finished");
+            session.Status = session.Status != SessionStatus.Cancelled ? SessionStatus.Finished : throw new InvalidOperationException("Session is already finished");
 
 
             session.UpdatedAt = DateTime.UtcNow;
 
             await _seRepos.UpdateAsync(session);
-            
-            
+
+
 
         }
 
@@ -95,22 +99,87 @@ namespace U7Quizzes.Services
             if (session == null)
                 throw new NullReferenceException("Session not found");
 
-                if (session.Status != SessionStatus.Cancelled || session.Status != SessionStatus.Finished)
-                {
+            if (session.Status != SessionStatus.Cancelled || session.Status != SessionStatus.Finished)
+            {
                 session.Status = SessionStatus.Finished;
                 session.UpdatedAt = DateTime.UtcNow;
                 session.EndTime = DateTime.UtcNow;
-               
-                }
+
+            }
             await _seRepos.UpdateAsync(session);
             throw new InvalidOperationException("Session is already finished or cancelled");
-            
-            
+
+
+        }
+
+        public async Task<Leaderboard> GetLeaderBoard(int sessionId)
+        {
+            var leaderBoard = await _cache.Get<Leaderboard>($"leaderboard_{sessionId}");
+            if (leaderBoard != null)
+                return leaderBoard;
+
+            var sessionExists = await _context.Session
+                .AnyAsync(s => s.SessionId == sessionId);
+
+            if (!sessionExists)
+                throw new NullReferenceException("Session not found");
+
+            // Query with projection - only fetch what you need
+            var participantsWithScores = await _context.Participant
+                .Where(p => p.SessionId == sessionId)
+                .Select(p => new Participant_Leaderboard
+                {
+                    Participant = new ParticipantDTO
+                    {
+                        ParticipantId = p.ParticipantId,
+                        DisplayName = p.Nickname,
+                        UserID = p.UserId
+                    },
+                    CorrectAnsCount = p.Responses.Count(r => r.IsCorrect),
+                    WrongAwnserCount = p.Responses.Count(r => !r.IsCorrect),
+                    Score = p.Responses.Sum(r => r.Score)
+                })
+                .ToListAsync();
+
+
+            var rankedParticipants = participantsWithScores
+                .OrderByDescending(p => p.Score)
+                .ThenByDescending(p => p.CorrectAnsCount)
+                .ToList();
+
+            int currentRank = 1;
+            for (int i = 0; i < rankedParticipants.Count; i++)
+            {
+                if (i > 0 && rankedParticipants[i].Score < rankedParticipants[i - 1].Score)
+                {
+                    currentRank = i + 1;
+                }
+                rankedParticipants[i].Rank = currentRank;
+            }
+
+            leaderBoard = new Leaderboard
+            {
+                SessionId = sessionId,
+                Participants = rankedParticipants
+            };
+            await _cache.Set(leaderBoard, $"leaderboard_{sessionId}");
+
+            return leaderBoard;
         }
 
         public async Task<List<ParticipantDTO>> GetParticipants(string AccessCode)
         {
-            return await _seRepos.GetParticipants(AccessCode);
+            var participants = await _cache.Get<List<ParticipantDTO>>($"pars_{AccessCode}");
+
+            if (participants == null)
+            {
+                participants = await _seRepos.GetParticipants(AccessCode);
+
+                await _cache.Set(participants, "$pars_{AccessCode}");
+            }
+
+            return participants;
+
         }
 
         public async Task<List<ParticipantDTO>> GetParticipantsBySessionId(int sessionId)
@@ -118,7 +187,8 @@ namespace U7Quizzes.Services
             var session = await _seRepos.GetSessionByID(sessionId);
             if (session == null)
                 throw new NullReferenceException("Session not found");
-            return await _seRepos.GetParticipants(session.AccessCode);
+
+            return await GetParticipants(session.AccessCode); 
         }
 
         public async Task<ParticipantDTO> JoinSession(ParticipantDTO request, string accessCode)
@@ -149,13 +219,14 @@ namespace U7Quizzes.Services
                 if (user == null) throw new Exception("User does not exists");
 
                 newParticipant.Nickname = user.DisplayName;
-                newParticipant.UserId = user.UserID;
             }
 
             else
             {
                 newParticipant.Nickname = request.DisplayName;
             }
+
+            newParticipant.UserId = request.UserID;
 
             await _context.Participant.AddAsync(newParticipant);
             await _context.SaveChangesAsync();
@@ -164,10 +235,10 @@ namespace U7Quizzes.Services
 
             return new ParticipantDTO
             {
-                DisplayName = newParticipant.Nickname , 
-                UserID = newParticipant.UserId , 
-                ParticipantId = newParticipant.ParticipantId 
-            }; 
+                DisplayName = newParticipant.Nickname,
+                UserID = newParticipant.UserId,
+                ParticipantId = newParticipant.ParticipantId
+            };
 
 
         }
@@ -177,7 +248,7 @@ namespace U7Quizzes.Services
             var session = await _seRepos.GetSessionByID(sessionId);
             if (session == null)
                 throw new NullReferenceException("Session not found");
-                
+
             if (session.Status != SessionStatus.Cancelled || session.Status != SessionStatus.Finished)
             {
                 session.Status = SessionStatus.Paused;
@@ -193,7 +264,7 @@ namespace U7Quizzes.Services
         {
             var session = await _seRepos.GetSessionByID(sessionId);
             if (session == null)
-                throw new  NullReferenceException("Session not found" );
+                throw new NullReferenceException("Session not found");
 
             if (session.HostId != userId)
                 throw new UnauthorizedAccessException("User is not allowed to access this session");
@@ -202,17 +273,17 @@ namespace U7Quizzes.Services
             if (par == null)
                 throw new NullReferenceException("Participant not found");
 
-             await _participantRepository.DeleteAsync(par);
+            await _participantRepository.DeleteAsync(par);
 
             await _participantRepository.SaveChangesAsync();
         }
 
         public async Task ResumeSession(int sessionId)
         {
-             var session = await _seRepos.GetSessionByID(sessionId);
+            var session = await _seRepos.GetSessionByID(sessionId);
             if (session == null)
                 throw new NullReferenceException("Session not found");
-                
+
             if (session.Status == SessionStatus.Paused)
             {
                 session.Status = SessionStatus.Active;
@@ -236,13 +307,13 @@ namespace U7Quizzes.Services
 
 
             session.Status = SessionStatus.Active;
-            session.StartTime = DateTime.UtcNow; 
+            session.StartTime = DateTime.UtcNow;
 
             await _seRepos.UpdateAsync(session);
             await _seRepos.SaveChangesAsync();
 
 
-            var questions = await _quesRepos.GetQuestionsByQuizId(session.QuizId); 
+            var questions = await _quesRepos.GetQuestionsByQuizId(session.QuizId);
 
 
             return questions;

@@ -41,14 +41,11 @@ builder.Services.AddAutoMapper(typeof(Program));
 
 builder.Services.AddAuthentication(options =>
 {
-    options.DefaultScheme = CookieAuthenticationDefaults.AuthenticationScheme;
-    options.DefaultAuthenticateScheme = CookieAuthenticationDefaults.AuthenticationScheme;
-    options.DefaultSignInScheme = CookieAuthenticationDefaults.AuthenticationScheme;
-    options.DefaultChallengeScheme = GoogleDefaults.AuthenticationScheme; // mặc định challenge = Google
+    options.DefaultScheme = JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme; // 🔑
 })
-.AddCookie(
-
-    ) // cần để lưu state và thông tin user
+.AddCookie() 
 .AddGoogle(googleOptions =>
 {
     googleOptions.ClientId = builder.Configuration["Google:ClientId"];
@@ -74,18 +71,14 @@ builder.Services.AddAuthentication(options =>
         {
             var path = context.HttpContext.Request.Path;
 
-            // ✅ Xử lý riêng cho SignalR
+
             if (path.StartsWithSegments("/quiz_session"))
             {
-                Console.WriteLine("heeeeeeeeeeee");
-                // SignalR: đọc từ query string trước, fallback sang cookie
                 var accessToken = context.Request.Query["access_token"].ToString();
-                Console.WriteLine(accessToken);
                 context.Token = accessToken;
             }
             else
             {
-                // REST API: đọc từ cookie
                 context.Token = context.Request.Cookies["access_token"];
             }
 

@@ -15,8 +15,6 @@ namespace U7Quizzes.Models
         [MaxLength(10)]
         public string AccessCode { get; set; }
 
-        [MaxLength(255)]
-        public string QrCodeUrl { get; set; }
 
         [Required]
         public SessionStatus Status { get; set; } = SessionStatus.Waiting;
@@ -28,6 +26,8 @@ namespace U7Quizzes.Models
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
         public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+
+        public string? ConnectionId { get; set; }
 
         public bool IsDeleted { get; set; } = false;
         public DateTime? DeletedAt { get; set; }
